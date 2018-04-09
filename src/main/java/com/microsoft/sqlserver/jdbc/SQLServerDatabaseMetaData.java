@@ -767,17 +767,18 @@ public final class SQLServerDatabaseMetaData implements java.sql.DatabaseMetaDat
          * sp_fkeys [ @pktable_name = ] 'pktable_name' [ , [ @pktable_owner = ] 'pktable_owner' ] [ , [ @pktable_qualifier = ] 'pktable_qualifier' ] {
          * , [ @fktable_name = ] 'fktable_name' } [ , [ @fktable_owner = ] 'fktable_owner' ] [ , [ @fktable_qualifier = ] 'fktable_qualifier' ]
          */
-        String[] arguments = new String[6];
-        arguments[0] = tab1; // pktable_name
-        arguments[1] = schem1;
-        arguments[2] = cat1;
-        arguments[3] = tab2;
-        arguments[4] = schem2;
-        arguments[5] = cat2;
-
-        //SQLServerResultSet fkeysRS = getResultSetWithProvidedColumnNames(null, CallableHandles.SP_FKEYS, arguments, pkfkColumnNames);
-
-        return executeSPFkeys(tab1);
+        String params = "@pktable_name = '" + tab1 + "'";
+        if (schem1 != null && schem1 != "")
+            params += ", @pktable_owner = '" + schem1 + "'";
+        if (cat1 != null && cat1 != "")
+            params += ", @pktable_qualifier = '" + cat1 + "'";
+        
+        params += ", @fktable_name = '" + tab2 + "'";
+        if (schem2 != null && schem2 != "")
+            params += ", @fktable_owner = '" + schem2 + "'";
+        if (cat2 != null && cat2 != "")
+            params += ", @fktable_qualifier = '" + cat2 + "'";
+        return executeSPFkeys(params);
     }
 
     /* L0 */ public String getDatabaseProductName() throws SQLServerException {
@@ -833,17 +834,12 @@ public final class SQLServerDatabaseMetaData implements java.sql.DatabaseMetaDat
          * sp_fkeys [ @pktable_name = ] 'pktable_name' [ , [ @pktable_owner = ] 'pktable_owner' ] [ , [ @pktable_qualifier = ] 'pktable_qualifier' ] {
          * , [ @fktable_name = ] 'fktable_name' } [ , [ @fktable_owner = ] 'fktable_owner' ] [ , [ @fktable_qualifier = ] 'fktable_qualifier' ]
          */
-        String[] arguments = new String[6];
-        arguments[0] = table; // pktable_name
-        arguments[1] = schema;
-        arguments[2] = cat;
-        arguments[3] = null; // fktable_name
-        arguments[4] = null;
-        arguments[5] = null;
-        
-        //SQLServerResultSet fkeysRS = getResultSetWithProvidedColumnNames(cat, CallableHandles.SP_FKEYS, arguments, pkfkColumnNames);
-
-        return executeSPFkeys(table);
+        String params = "@pktable_name = '" + table + "'";
+        if (schema != null && schema != "")
+            params += ", @pktable_owner = '" + schema + "'";
+        if (cat != null && cat != "")
+            params += ", @pktable_qualifier = '" + cat + "'";
+        return executeSPFkeys(params);
     }
 
     /* L0 */ public String getExtraNameCharacters() throws SQLServerException {
@@ -868,112 +864,69 @@ public final class SQLServerDatabaseMetaData implements java.sql.DatabaseMetaDat
          * sp_fkeys [ @pktable_name = ] 'pktable_name' [ , [ @pktable_owner = ] 'pktable_owner' ] [ , [ @pktable_qualifier = ] 'pktable_qualifier' ] {
          * , [ @fktable_name = ] 'fktable_name' } [ , [ @fktable_owner = ] 'fktable_owner' ] [ , [ @fktable_qualifier = ] 'fktable_qualifier' ]
          */
-        String[] arguments = new String[6];
-        arguments[0] = null; // pktable_name
-        arguments[1] = null;
-        arguments[2] = null;
-        arguments[3] = table; // fktable_name
-        arguments[4] = schema;
-        arguments[5] = cat;
-
-        //SQLServerResultSet fkeysRS = getResultSetWithProvidedColumnNames(cat, CallableHandles.SP_FKEYS, arguments, pkfkColumnNames);
-
-        return executeSPFkeys(table);
+        String params = "@fktable_name = '" + table + "'";
+        if (schema != null && schema != "")
+            params += ", @fktable_owner = '" + schema + "'";
+        if (cat != null && cat != "")
+            params += ", @fktable_qualifier = '" + cat + "'";
+        return executeSPFkeys(params);
     }
     
-    private ResultSet executeSPFkeys(String tableName) throws SQLServerException, SQLTimeoutException
+    private ResultSet executeSPFkeys(String procParams) throws SQLServerException, SQLTimeoutException
     {
-        String sql = "CREATE TABLE #tempTable (PKTABLE_QUALIFIER sysname, " + 
-                "                         PKTABLE_OWNER sysname, " + 
-                "                         PKTABLE_NAME sysname, " + 
-                "                         PKCOLUMN_NAME sysname, " + 
-                "                         FKTABLE_QUALIFIER sysname, " + 
-                "                         FKTABLE_OWNER sysname, " + 
-                "                         FKTABLE_NAME sysname, " + 
-                "                         FKCOLUMN_NAME sysname, " + 
-                "                         KEY_SEQ smallint, " + 
-                "                         UPDATE_RULE smallint, " + 
-                "                         DELETE_RULE smallint, " + 
-                "                         FK_NAME sysname, " + 
-                "                         PK_NAME sysname, " + 
-                "                         DEFERRABILITY smallint) " + 
-                "   INSERT INTO #tempTable EXEC sp_fkeys '" + tableName + "' " + 
-                "   SELECT  t.PKTABLE_QUALIFIER, " + 
-                "        t.PKTABLE_OWNER, " + 
-                "        t.PKTABLE_NAME, " + 
-                "        t.PKCOLUMN_NAME, " + 
-                "        t.FKTABLE_QUALIFIER, " + 
-                "        t.FKTABLE_OWNER, " + 
-                "        t.FKTABLE_NAME, " + 
-                "        t.FKCOLUMN_NAME, " + 
-                "        t.KEY_SEQ, " + 
-                "        CASE " + 
-                "            WHEN s.update_referential_action = 0 THEN 0 " + 
-                "            WHEN s.update_referential_action = 1 THEN 3 " + 
-                "            WHEN s.update_referential_action = 2 THEN 2 " + 
-                "            WHEN s.update_referential_action = 3 THEN 4 " + 
-                "        END as UPDATE_RULE, " + 
-                "        CASE " + 
-                "            WHEN s.delete_referential_action = 0 THEN 0 " + 
-                "            WHEN s.delete_referential_action = 1 THEN 3 " + 
-                "            WHEN s.delete_referential_action = 2 THEN 2 " + 
-                "            WHEN s.delete_referential_action = 3 THEN 4 " + 
-                "        END as DELETE_RULE, " + 
-                "        t.FK_NAME, " + 
-                "        t.PK_NAME, " + 
-                "        t.DEFERRABILITY " + 
-                "   FROM #tempTable t " + 
-                "   LEFT JOIN sys.foreign_keys s ON t.FK_NAME = s.name ";
-        SQLServerStatement stmt = (SQLServerStatement) connection.createStatement();
-        return stmt.executeQuery(sql);
-    }
-    
-    private ResultSet AdjustFkeys(SQLServerResultSet fkeysRS) throws SQLServerException
-    {
-        if (!fkeysRS.next()) {
-            return fkeysRS;
-        } else {
-            int updateCol = fkeysRS.findColumn("UPDATE_RULE");
-            int deleteCol = fkeysRS.findColumn("DELETE_RULE"); //this should just be update +1, more efficient but may be risky?
-            do {
-                switch (fkeysRS.getInt(updateCol))  {
-                    case 0:
-                        fkeysRS.updateInt(updateCol, 0);
-                        break;
-                    case 1:
-                        fkeysRS.updateInt(updateCol, 3);
-                        break;
-                    case 2:
-                        fkeysRS.updateInt(updateCol, 2);
-                        break;
-                    case 3:
-                        fkeysRS.updateInt(updateCol, 4);
-                        break;
-                    default:
-                        break;
-                        //throw error
-                }
-                switch (fkeysRS.getInt(deleteCol))  {
-                    case 0:
-                        fkeysRS.updateInt(deleteCol, 0);
-                        break;
-                    case 1:
-                        fkeysRS.updateInt(deleteCol, 3);
-                        break;
-                    case 2:
-                        fkeysRS.updateInt(deleteCol, 2);
-                        break;
-                    case 3:
-                        fkeysRS.updateInt(deleteCol, 4);
-                        break;
-                    default:
-                        break;
-                        //throw error
-                }
-            } while (fkeysRS.next());
+        String tempTableName = "#tempTable" + UUID.randomUUID();
+        String sql = "CREATE TABLE [" + tempTableName + "](PKTABLE_QUALIFIER sysname, " + 
+                                              "PKTABLE_OWNER sysname, " + 
+                                              "PKTABLE_NAME sysname, " + 
+                                              "PKCOLUMN_NAME sysname, " + 
+                                              "FKTABLE_QUALIFIER sysname, " + 
+                                              "FKTABLE_OWNER sysname, " + 
+                                              "FKTABLE_NAME sysname, " + 
+                                              "FKCOLUMN_NAME sysname, " + 
+                                              "KEY_SEQ smallint, " + 
+                                              "UPDATE_RULE smallint, " + 
+                                              "DELETE_RULE smallint, " + 
+                                              "FK_NAME sysname, " + 
+                                              "PK_NAME sysname, " + 
+                                              "DEFERRABILITY smallint) " + 
+                     "INSERT INTO [" + tempTableName + "] EXEC sp_fkeys " + procParams + "; " +
+                     "SELECT  t.PKTABLE_QUALIFIER, " + 
+                             "t.PKTABLE_OWNER, " + 
+                             "t.PKTABLE_NAME, " + 
+                             "t.PKCOLUMN_NAME, " + 
+                             "t.FKTABLE_QUALIFIER, " + 
+                             "t.FKTABLE_OWNER, " + 
+                             "t.FKTABLE_NAME, " + 
+                             "t.FKCOLUMN_NAME, " + 
+                             "t.KEY_SEQ, " + 
+                             "CASE " + 
+                                 "WHEN s.update_referential_action = 0 THEN 0 " + //cascade
+                                 "WHEN s.update_referential_action = 1 THEN 3 " + //no action
+                                 "WHEN s.update_referential_action = 2 THEN 2 " + //set null
+                                 "WHEN s.update_referential_action = 3 THEN 4 " + //set default
+                             "END as UPDATE_RULE, " + 
+                             "CASE " + 
+                                 "WHEN s.delete_referential_action = 0 THEN 0 " + 
+                                 "WHEN s.delete_referential_action = 1 THEN 3 " + 
+                                 "WHEN s.delete_referential_action = 2 THEN 2 " + 
+                                 "WHEN s.delete_referential_action = 3 THEN 4 " + 
+                             "END as DELETE_RULE, " + 
+                             "t.FK_NAME, " + 
+                             "t.PK_NAME, " + 
+                             "t.DEFERRABILITY " + 
+                     "FROM [" + tempTableName + "] t " + 
+                     "LEFT JOIN sys.foreign_keys s ON t.FK_NAME = s.name " +
+                     "DROP TABLE [" + tempTableName + "]";
+        Statement stmt = connection.createStatement();
+        ResultSet rs;
+        try {
+            rs = stmt.executeQuery(sql);
+            return rs;
+        } catch (SQLException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
         }
-        fkeysRS.first();
-        return fkeysRS;
+        return null;
     }
 
     private static final String[] getIndexInfoColumnNames = {/* 1 */ TABLE_CAT, /* 2 */ TABLE_SCHEM, /* 3 */ TABLE_NAME, /* 4 */ NON_UNIQUE,
