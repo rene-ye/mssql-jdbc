@@ -816,18 +816,7 @@ public final class SQLServerDatabaseMetaData implements java.sql.DatabaseMetaDat
     /* L0 */ public java.sql.ResultSet getExportedKeys(String cat,
             String schema,
             String table) throws SQLServerException, SQLTimeoutException {
-        if (loggerExternal.isLoggable(Level.FINER) && Util.IsActivityTraceOn()) {
-            loggerExternal.finer(toString() + " ActivityId: " + ActivityCorrelator.getNext().toString());
-        }
-        checkClosed();
-
-        /*
-         * sp_fkeys [ @pktable_name = ] 'pktable_name' [ , [ @pktable_owner = ] 'pktable_owner' ] [ , [ @pktable_qualifier = ] 'pktable_qualifier' ] {
-         * , [ @fktable_name = ] 'fktable_name' } [ , [ @fktable_owner = ] 'fktable_owner' ] [ , [ @fktable_qualifier = ] 'fktable_qualifier' ]
-         */
-        String[] arguments = {table, schema, cat, null, null, null};
-        
-        return executeSPFkeys(handleSPFKeyParameters(arguments));
+        return getCrossReference(cat, schema, table, null, null, null);
     }
 
     /* L0 */ public String getExtraNameCharacters() throws SQLServerException {
@@ -843,18 +832,7 @@ public final class SQLServerDatabaseMetaData implements java.sql.DatabaseMetaDat
     /* L0 */ public java.sql.ResultSet getImportedKeys(String cat,
             String schema,
             String table) throws SQLServerException, SQLTimeoutException {
-        if (loggerExternal.isLoggable(Level.FINER) && Util.IsActivityTraceOn()) {
-            loggerExternal.finer(toString() + " ActivityId: " + ActivityCorrelator.getNext().toString());
-        }
-        checkClosed();
-
-        /*
-         * sp_fkeys [ @pktable_name = ] 'pktable_name' [ , [ @pktable_owner = ] 'pktable_owner' ] [ , [ @pktable_qualifier = ] 'pktable_qualifier' ] {
-         * , [ @fktable_name = ] 'fktable_name' } [ , [ @fktable_owner = ] 'fktable_owner' ] [ , [ @fktable_qualifier = ] 'fktable_qualifier' ]
-        */
-        String[] arguments = {null, null, null, table, schema, cat};
-        
-        return executeSPFkeys(handleSPFKeyParameters(arguments));
+        return getCrossReference(null, null, null, cat, schema, table);
     }
     
     private String handleSPFKeyParameters(String args[])
@@ -866,8 +844,7 @@ public final class SQLServerDatabaseMetaData implements java.sql.DatabaseMetaDat
         for (int i = 0; i < 6; i++) {
             if (args[i] == null || args[i] == "") {
                 args[i] = "null";
-            }
-            else {
+            } else {
                 args[i] = "'" + args[i] + "'";
             }
         }
@@ -896,12 +873,12 @@ public final class SQLServerDatabaseMetaData implements java.sql.DatabaseMetaDat
                                               "PK_NAME sysname, " + 
                                               "DEFERRABILITY smallint);" + 
                      "INSERT INTO " + tempTableName + " EXEC sp_fkeys " + procParams + ";" +
-                     "SELECT  t.PKTABLE_QUALIFIER, " + 
-                             "t.PKTABLE_OWNER, " + 
+                     "SELECT  t.PKTABLE_QUALIFIER AS PKTABLE_CAT, " + 
+                             "t.PKTABLE_OWNER AS PKTABLE_SCHEM, " + 
                              "t.PKTABLE_NAME, " + 
                              "t.PKCOLUMN_NAME, " + 
-                             "t.FKTABLE_QUALIFIER, " + 
-                             "t.FKTABLE_OWNER, " + 
+                             "t.FKTABLE_QUALIFIER AS FKTABLE_CAT, " + 
+                             "t.FKTABLE_OWNER AS FKTABLE_SCHEM, " + 
                              "t.FKTABLE_NAME, " + 
                              "t.FKCOLUMN_NAME, " + 
                              "t.KEY_SEQ, " + 
