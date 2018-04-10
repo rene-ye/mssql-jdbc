@@ -900,14 +900,14 @@ public final class SQLServerDatabaseMetaData implements java.sql.DatabaseMetaDat
                              "t.FKCOLUMN_NAME, " + 
                              "t.KEY_SEQ, " + 
                              "CASE " + 
-                                 "WHEN s.update_referential_action = 0 THEN 0 " + //cascade
-                                 "WHEN s.update_referential_action = 1 THEN 3 " + //no action
+                                 "WHEN s.update_referential_action = 1 THEN 0 " + //cascade - note that sp_fkey and sys.foreign_keys 
+                                 "WHEN s.update_referential_action = 0 THEN 3 " + //no action - have flipped values for cascade and no action
                                  "WHEN s.update_referential_action = 2 THEN 2 " + //set null
                                  "WHEN s.update_referential_action = 3 THEN 4 " + //set default
                              "END as UPDATE_RULE, " + 
                              "CASE " + 
-                                 "WHEN s.delete_referential_action = 0 THEN 0 " + 
-                                 "WHEN s.delete_referential_action = 1 THEN 3 " + 
+                                 "WHEN s.delete_referential_action = 1 THEN 0 " + 
+                                 "WHEN s.delete_referential_action = 0 THEN 3 " + 
                                  "WHEN s.delete_referential_action = 2 THEN 2 " + 
                                  "WHEN s.delete_referential_action = 3 THEN 4 " + 
                              "END as DELETE_RULE, " + 
@@ -917,16 +917,10 @@ public final class SQLServerDatabaseMetaData implements java.sql.DatabaseMetaDat
                      "FROM [" + tempTableName + "] t " + 
                      "LEFT JOIN sys.foreign_keys s ON t.FK_NAME = s.name " +
                      "DROP TABLE [" + tempTableName + "]";
-        Statement stmt = connection.createStatement();
+        SQLServerStatement stmt = (SQLServerStatement)connection.createStatement();
         ResultSet rs;
-        try {
-            rs = stmt.executeQuery(sql);
-            return rs;
-        } catch (SQLException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
-        return null;
+        rs = stmt.executeQuery(sql);
+        return rs;
     }
 
     private static final String[] getIndexInfoColumnNames = {/* 1 */ TABLE_CAT, /* 2 */ TABLE_SCHEM, /* 3 */ TABLE_NAME, /* 4 */ NON_UNIQUE,

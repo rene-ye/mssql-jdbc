@@ -73,10 +73,10 @@ public class DatabaseMetaDataForeignKeyTest extends AbstractTest {
 
         connection.createStatement().executeUpdate("if object_id('" + table1 + "','U') is not null drop table " + table1);
         stmt.execute("Create table " + table1 + " (c11 int primary key," 
-                + " c12 int FOREIGN KEY REFERENCES " + table2 + "(c21) ON DELETE cascade ON UPDATE set default," 
-                + " c13 int FOREIGN KEY REFERENCES " + table3 + "(c31) ON DELETE no action ON UPDATE set null," 
-                + " c14 int FOREIGN KEY REFERENCES " + table4 + "(c41) ON DELETE set null ON UPDATE no action," 
-                + " c15 int FOREIGN KEY REFERENCES " + table5 + "(c51) ON DELETE set default ON UPDATE cascade," 
+                + " c12 int FOREIGN KEY REFERENCES " + table2 + "(c21) ON DELETE no action ON UPDATE set default," 
+                + " c13 int FOREIGN KEY REFERENCES " + table3 + "(c31) ON DELETE cascade ON UPDATE set null," 
+                + " c14 int FOREIGN KEY REFERENCES " + table4 + "(c41) ON DELETE set null ON UPDATE cascade," 
+                + " c15 int FOREIGN KEY REFERENCES " + table5 + "(c51) ON DELETE set default ON UPDATE no action," 
                 + ")");
     }
 
@@ -116,6 +116,14 @@ public class DatabaseMetaDataForeignKeyTest extends AbstractTest {
 
         SQLServerResultSet rs5 = (SQLServerResultSet) dmd.getImportedKeys("", "", table1);
         validateGetImportedKeysResults(rs5);
+        
+        try {
+            SQLServerResultSet rs6 = (SQLServerResultSet) dmd.getImportedKeys(catalog, schema, "");
+            validateGetImportedKeysResults(rs6);
+            fail("No Error");
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 
     private void validateGetImportedKeysResults(SQLServerResultSet rs) throws SQLException {
