@@ -111,18 +111,13 @@ public class DatabaseMetaDataForeignKeyTest extends AbstractTest {
         SQLServerResultSet rs3 = (SQLServerResultSet) dmd.getImportedKeys(catalog, "", table1);
         validateGetImportedKeysResults(rs3);
 
-        SQLServerResultSet rs4 = (SQLServerResultSet) dmd.getImportedKeys("", schema, table1);
-        validateGetImportedKeysResults(rs4);
-
-        SQLServerResultSet rs5 = (SQLServerResultSet) dmd.getImportedKeys("", "", table1);
-        validateGetImportedKeysResults(rs5);
-        
         try {
-            SQLServerResultSet rs6 = (SQLServerResultSet) dmd.getImportedKeys(catalog, schema, "");
-            validateGetImportedKeysResults(rs6);
-            fail("No Error");
-        } catch (SQLException e) {
-            e.printStackTrace();
+            dmd.getImportedKeys("", schema, table1);
+            fail("Exception is not thrown.");
+        }
+        catch (SQLException e) {
+            System.out.println(e.getMessage());
+            assertTrue(e.getMessage().startsWith(EXPECTED_ERROR_MESSAGE));
         }
     }
 
@@ -191,15 +186,14 @@ public class DatabaseMetaDataForeignKeyTest extends AbstractTest {
             assertEquals(values[i][0], rs3.getInt("UPDATE_RULE"));
             assertEquals(values[i][1], rs3.getInt("DELETE_RULE"));
 
-            SQLServerResultSet rs4 = (SQLServerResultSet) dmd.getExportedKeys("", schema, pkTable);
-            rs4.next();
-            assertEquals(values[i][0], rs4.getInt("UPDATE_RULE"));
-            assertEquals(values[i][1], rs4.getInt("DELETE_RULE"));
-            
-            SQLServerResultSet rs5 = (SQLServerResultSet) dmd.getExportedKeys("", "", pkTable);
-            rs5.next();
-            assertEquals(values[i][0], rs5.getInt("UPDATE_RULE"));
-            assertEquals(values[i][1], rs5.getInt("DELETE_RULE"));
+            try {
+                dmd.getExportedKeys("", schema, pkTable);
+                fail("Exception is not thrown.");
+            }
+            catch (SQLException e) {
+                System.out.println(e.getMessage());
+                assertTrue(e.getMessage().startsWith(EXPECTED_ERROR_MESSAGE));
+            }
         }
     }
     
@@ -240,15 +234,13 @@ public class DatabaseMetaDataForeignKeyTest extends AbstractTest {
             assertEquals(values[i][0], rs3.getInt("UPDATE_RULE"));
             assertEquals(values[i][1], rs3.getInt("DELETE_RULE"));
 
-            SQLServerResultSet rs4 = (SQLServerResultSet) dmd.getCrossReference("", schema, pkTable, "", schema, fkTable);
-            rs4.next();
-            assertEquals(values[i][0], rs4.getInt("UPDATE_RULE"));
-            assertEquals(values[i][1], rs4.getInt("DELETE_RULE"));
-            
-            SQLServerResultSet rs5 = (SQLServerResultSet) dmd.getCrossReference("", "", pkTable, "", "", fkTable);
-            rs5.next();
-            assertEquals(values[i][0], rs5.getInt("UPDATE_RULE"));
-            assertEquals(values[i][1], rs5.getInt("DELETE_RULE"));
+            try {
+                dmd.getCrossReference("", schema, pkTable, "", schema, fkTable);
+                fail("Exception is not thrown.");
+            }
+            catch (SQLException e) {
+                assertEquals(EXPECTED_ERROR_MESSAGE2, e.getMessage());
+            }
         }
     }
 }

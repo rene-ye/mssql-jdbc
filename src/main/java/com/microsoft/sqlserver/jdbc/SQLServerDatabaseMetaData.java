@@ -767,18 +767,9 @@ public final class SQLServerDatabaseMetaData implements java.sql.DatabaseMetaDat
          * sp_fkeys [ @pktable_name = ] 'pktable_name' [ , [ @pktable_owner = ] 'pktable_owner' ] [ , [ @pktable_qualifier = ] 'pktable_qualifier' ] {
          * , [ @fktable_name = ] 'fktable_name' } [ , [ @fktable_owner = ] 'fktable_owner' ] [ , [ @fktable_qualifier = ] 'fktable_qualifier' ]
          */
-        String params = "@pktable_name = '" + tab1 + "'";
-        if (schem1 != null && schem1 != "")
-            params += ", @pktable_owner = '" + schem1 + "'";
-        if (cat1 != null && cat1 != "")
-            params += ", @pktable_qualifier = '" + cat1 + "'";
+        String[] arguments = {tab1, schem1, cat1, tab2, schem2, cat2};
         
-        params += ", @fktable_name = '" + tab2 + "'";
-        if (schem2 != null && schem2 != "")
-            params += ", @fktable_owner = '" + schem2 + "'";
-        if (cat2 != null && cat2 != "")
-            params += ", @fktable_qualifier = '" + cat2 + "'";
-        return executeSPFkeys(params);
+        return executeSPFkeys(handleSPFKeyParameters(arguments));
     }
 
     /* L0 */ public String getDatabaseProductName() throws SQLServerException {
@@ -834,12 +825,9 @@ public final class SQLServerDatabaseMetaData implements java.sql.DatabaseMetaDat
          * sp_fkeys [ @pktable_name = ] 'pktable_name' [ , [ @pktable_owner = ] 'pktable_owner' ] [ , [ @pktable_qualifier = ] 'pktable_qualifier' ] {
          * , [ @fktable_name = ] 'fktable_name' } [ , [ @fktable_owner = ] 'fktable_owner' ] [ , [ @fktable_qualifier = ] 'fktable_qualifier' ]
          */
-        String params = "@pktable_name = '" + table + "'";
-        if (schema != null && schema != "")
-            params += ", @pktable_owner = '" + schema + "'";
-        if (cat != null && cat != "")
-            params += ", @pktable_qualifier = '" + cat + "'";
-        return executeSPFkeys(params);
+        String[] arguments = {table, schema, cat, null, null, null};
+        
+        return executeSPFkeys(handleSPFKeyParameters(arguments));
     }
 
     /* L0 */ public String getExtraNameCharacters() throws SQLServerException {
@@ -863,19 +851,37 @@ public final class SQLServerDatabaseMetaData implements java.sql.DatabaseMetaDat
         /*
          * sp_fkeys [ @pktable_name = ] 'pktable_name' [ , [ @pktable_owner = ] 'pktable_owner' ] [ , [ @pktable_qualifier = ] 'pktable_qualifier' ] {
          * , [ @fktable_name = ] 'fktable_name' } [ , [ @fktable_owner = ] 'fktable_owner' ] [ , [ @fktable_qualifier = ] 'fktable_qualifier' ]
-         */
-        String params = "@fktable_name = '" + table + "'";
-        if (schema != null && schema != "")
-            params += ", @fktable_owner = '" + schema + "'";
-        if (cat != null && cat != "")
-            params += ", @fktable_qualifier = '" + cat + "'";
-        return executeSPFkeys(params);
+        */
+        String[] arguments = {null, null, null, table, schema, cat};
+        
+        return executeSPFkeys(handleSPFKeyParameters(arguments));
+    }
+    
+    private String handleSPFKeyParameters(String args[])
+    {
+        if (args.length != 6)
+            //throw unexpected argument count error
+            return "";
+        String params = "";
+        for (int i = 0; i < 6; i++) {
+            if (args[i] == null || args[i] == "") {
+                args[i] = "null";
+            }
+            else {
+                args[i] = "'" + args[i] + "'";
+            }
+        }
+        params += args[0];
+        for (int i = 1; i < 6; i++) {
+            params += ", " + args[i];
+        }
+        return params;
     }
     
     private ResultSet executeSPFkeys(String procParams) throws SQLServerException, SQLTimeoutException
     {
-        String tempTableName = "#tempTable" + UUID.randomUUID();
-        String sql = "CREATE TABLE [" + tempTableName + "](PKTABLE_QUALIFIER sysname, " + 
+        String tempTableName = "@jdbc_temp_fkeys_result";
+        String sql = "DECLARE " + tempTableName + " table (PKTABLE_QUALIFIER sysname, " + 
                                               "PKTABLE_OWNER sysname, " + 
                                               "PKTABLE_NAME sysname, " + 
                                               "PKCOLUMN_NAME sysname, " + 
@@ -888,8 +894,8 @@ public final class SQLServerDatabaseMetaData implements java.sql.DatabaseMetaDat
                                               "DELETE_RULE smallint, " + 
                                               "FK_NAME sysname, " + 
                                               "PK_NAME sysname, " + 
-                                              "DEFERRABILITY smallint) " + 
-                     "INSERT INTO [" + tempTableName + "] EXEC sp_fkeys " + procParams + "; " +
+                                              "DEFERRABILITY smallint);" + 
+                     "INSERT INTO " + tempTableName + " EXEC sp_fkeys " + procParams + ";" +
                      "SELECT  t.PKTABLE_QUALIFIER, " + 
                              "t.PKTABLE_OWNER, " + 
                              "t.PKTABLE_NAME, " + 
@@ -899,24 +905,23 @@ public final class SQLServerDatabaseMetaData implements java.sql.DatabaseMetaDat
                              "t.FKTABLE_NAME, " + 
                              "t.FKCOLUMN_NAME, " + 
                              "t.KEY_SEQ, " + 
-                             "CASE " + 
-                                 "WHEN s.update_referential_action = 1 THEN 0 " + //cascade - note that sp_fkey and sys.foreign_keys 
-                                 "WHEN s.update_referential_action = 0 THEN 3 " + //no action - have flipped values for cascade and no action
-                                 "WHEN s.update_referential_action = 2 THEN 2 " + //set null
-                                 "WHEN s.update_referential_action = 3 THEN 4 " + //set default
+                             "CASE s.update_referential_action " + 
+                                 "WHEN 1 THEN 0 " + //cascade - note that sp_fkey and sys.foreign_keys have flipped values for cascade and no action
+                                 "WHEN 0 THEN 3 " + //no action
+                                 "WHEN 2 THEN 2 " + //set null
+                                 "WHEN 3 THEN 4 " + //set default
                              "END as UPDATE_RULE, " + 
-                             "CASE " + 
-                                 "WHEN s.delete_referential_action = 1 THEN 0 " + 
-                                 "WHEN s.delete_referential_action = 0 THEN 3 " + 
-                                 "WHEN s.delete_referential_action = 2 THEN 2 " + 
-                                 "WHEN s.delete_referential_action = 3 THEN 4 " + 
+                             "CASE s.delete_referential_action " + 
+                                 "WHEN 1 THEN 0 " + 
+                                 "WHEN 0 THEN 3 " + 
+                                 "WHEN 2 THEN 2 " + 
+                                 "WHEN 3 THEN 4 " + 
                              "END as DELETE_RULE, " + 
                              "t.FK_NAME, " + 
                              "t.PK_NAME, " + 
                              "t.DEFERRABILITY " + 
-                     "FROM [" + tempTableName + "] t " + 
-                     "LEFT JOIN sys.foreign_keys s ON t.FK_NAME = s.name " +
-                     "DROP TABLE [" + tempTableName + "]";
+                     "FROM " + tempTableName + " t " + 
+                     "LEFT JOIN sys.foreign_keys s ON t.FK_NAME = s.name;";
         SQLServerStatement stmt = (SQLServerStatement)connection.createStatement();
         ResultSet rs;
         rs = stmt.executeQuery(sql);
