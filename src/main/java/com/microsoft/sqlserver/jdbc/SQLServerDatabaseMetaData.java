@@ -8,22 +8,16 @@
 
 package com.microsoft.sqlserver.jdbc;
 
-import java.sql.Array;
-import java.sql.BatchUpdateException;
 import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.DriverPropertyInfo;
-import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.RowIdLifetime;
 import java.sql.SQLException;
 import java.sql.SQLTimeoutException;
-import java.sql.Statement;
 import java.text.MessageFormat;
 import java.util.EnumMap;
-import java.util.LinkedList;
 import java.util.Properties;
-import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 
@@ -748,10 +742,6 @@ public final class SQLServerDatabaseMetaData implements java.sql.DatabaseMetaDat
         rs.getColumn(3).setFilter(new DataTypeFilter());
         return rs;
     }
-
-    private static final String[] pkfkColumnNames = {/* 1 */ PKTABLE_CAT, /* 2 */ PKTABLE_SCHEM, /* 3 */ PKTABLE_NAME, /* 4 */ PKCOLUMN_NAME,
-            /* 5 */ FKTABLE_CAT, /* 6 */ FKTABLE_SCHEM, /* 7 */ FKTABLE_NAME, /* 8 */ FKCOLUMN_NAME, /* 9 */ KEY_SEQ, /* 10 */ UPDATE_RULE,
-            /* 11 */ DELETE_RULE, /* 12 */ FK_NAME, /* 13 */ PK_NAME, /* 14 */ DEFERRABILITY};
 
     /* L0 */ public java.sql.ResultSet getCrossReference(String cat1,
             String schem1,
@@ -2014,7 +2004,7 @@ public final class SQLServerDatabaseMetaData implements java.sql.DatabaseMetaDat
         if (p > 0)
             s = s.substring(0, p);
         try {
-            return new Integer(s);
+            return Integer.parseInt(s);
         }
         catch (NumberFormatException e) {
             return 0;
@@ -2029,7 +2019,7 @@ public final class SQLServerDatabaseMetaData implements java.sql.DatabaseMetaDat
         if (p > 0 && q > 0)
             s = s.substring(p + 1, q);
         try {
-            return new Integer(s);
+            return Integer.parseInt(s);
         }
         catch (NumberFormatException e) {
             return 0;
