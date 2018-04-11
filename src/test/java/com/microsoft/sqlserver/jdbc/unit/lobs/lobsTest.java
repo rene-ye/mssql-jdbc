@@ -418,7 +418,7 @@ public class lobsTest extends AbstractTest {
             }
             else if (nClobType == classType(lobClass)) {
                 nclob = rs.getNClob(1);
-                assertEquals(nclob.length(), size);
+                assertEquals(nclob.length(), size*2);
                 stream = nclob.getAsciiStream();
                 BufferedInputStream is = new BufferedInputStream(stream);
                 is.read(chunk);
