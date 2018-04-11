@@ -13,6 +13,7 @@ import java.sql.BatchUpdateException;
 import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.DriverPropertyInfo;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.RowIdLifetime;
 import java.sql.SQLException;
@@ -768,8 +769,7 @@ public final class SQLServerDatabaseMetaData implements java.sql.DatabaseMetaDat
          * , [ @fktable_name = ] 'fktable_name' } [ , [ @fktable_owner = ] 'fktable_owner' ] [ , [ @fktable_qualifier = ] 'fktable_qualifier' ]
          */
         String[] arguments = {tab1, schem1, cat1, tab2, schem2, cat2};
-        
-        return executeSPFkeys(handleSPFKeyParameters(arguments));
+        return executeSPFkeys(arguments);
     }
 
     /* L0 */ public String getDatabaseProductName() throws SQLServerException {
@@ -834,28 +834,8 @@ public final class SQLServerDatabaseMetaData implements java.sql.DatabaseMetaDat
             String table) throws SQLServerException, SQLTimeoutException {
         return getCrossReference(null, null, null, cat, schema, table);
     }
-    
-    private String handleSPFKeyParameters(String args[])
-    {
-        if (args.length != 6)
-            //throw unexpected argument count error
-            return "";
-        String params = "";
-        for (int i = 0; i < 6; i++) {
-            if (args[i] == null || args[i] == "") {
-                args[i] = "null";
-            } else {
-                args[i] = "'" + args[i] + "'";
-            }
-        }
-        params += args[0];
-        for (int i = 1; i < 6; i++) {
-            params += ", " + args[i];
-        }
-        return params;
-    }
-    
-    private ResultSet executeSPFkeys(String procParams) throws SQLServerException, SQLTimeoutException
+
+    private ResultSet executeSPFkeys(String[] procParams) throws SQLServerException, SQLTimeoutException
     {
         String tempTableName = "@jdbc_temp_fkeys_result";
         String sql = "DECLARE " + tempTableName + " table (PKTABLE_QUALIFIER sysname, " + 
@@ -872,7 +852,7 @@ public final class SQLServerDatabaseMetaData implements java.sql.DatabaseMetaDat
                                               "FK_NAME sysname, " + 
                                               "PK_NAME sysname, " + 
                                               "DEFERRABILITY smallint);" + 
-                     "INSERT INTO " + tempTableName + " EXEC sp_fkeys " + procParams + ";" +
+                     "INSERT INTO " + tempTableName + " EXEC sp_fkeys ?,?,?,?,?,?;" +
                      "SELECT  t.PKTABLE_QUALIFIER AS PKTABLE_CAT, " + 
                              "t.PKTABLE_OWNER AS PKTABLE_SCHEM, " + 
                              "t.PKTABLE_NAME, " + 
@@ -899,9 +879,20 @@ public final class SQLServerDatabaseMetaData implements java.sql.DatabaseMetaDat
                              "t.DEFERRABILITY " + 
                      "FROM " + tempTableName + " t " + 
                      "LEFT JOIN sys.foreign_keys s ON t.FK_NAME = s.name;";
-        SQLServerStatement stmt = (SQLServerStatement)connection.createStatement();
-        ResultSet rs;
-        rs = stmt.executeQuery(sql);
+        SQLServerPreparedStatement pstmt = (SQLServerPreparedStatement) connection.prepareStatement(sql);
+        for (int i = 0; i < 6; i++) {
+            pstmt.setString(i+1, procParams[i]);
+        }
+        String currentDB = null;
+        if (procParams[2] != null && procParams[2] != "") {//pktable_qualifier
+            currentDB = switchCatalogs(procParams[2]);
+        } else if (procParams[5] != null && procParams[5] != "") {//fktable_qualifier
+            currentDB = switchCatalogs(procParams[5]);
+        }
+        ResultSet rs = pstmt.executeQuery();
+        if (currentDB != null) {
+            switchCatalogs(currentDB);
+        }
         return rs;
     }
 

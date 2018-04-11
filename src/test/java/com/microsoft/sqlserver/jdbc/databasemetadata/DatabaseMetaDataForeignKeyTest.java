@@ -116,7 +116,6 @@ public class DatabaseMetaDataForeignKeyTest extends AbstractTest {
             fail("Exception is not thrown.");
         }
         catch (SQLException e) {
-            System.out.println(e.getMessage());
             assertTrue(e.getMessage().startsWith(EXPECTED_ERROR_MESSAGE2));
         }
     }
@@ -191,7 +190,6 @@ public class DatabaseMetaDataForeignKeyTest extends AbstractTest {
                 fail("Exception is not thrown.");
             }
             catch (SQLException e) {
-                System.out.println(e.getMessage());
                 assertTrue(e.getMessage().startsWith(EXPECTED_ERROR_MESSAGE2));
             }
         }
