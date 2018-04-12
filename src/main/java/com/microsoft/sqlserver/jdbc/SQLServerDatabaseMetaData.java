@@ -869,9 +869,9 @@ public final class SQLServerDatabaseMetaData implements java.sql.DatabaseMetaDat
                              "t.DEFERRABILITY " + 
                      "FROM " + tempTableName + " t " + 
                      "LEFT JOIN sys.foreign_keys s ON t.FK_NAME = s.name;";
-        SQLServerPreparedStatement pstmt = (SQLServerPreparedStatement) connection.prepareStatement(sql);
+        SQLServerCallableStatement cstmt = (SQLServerCallableStatement) connection.prepareCall(sql);
         for (int i = 0; i < 6; i++) {
-            pstmt.setString(i+1, procParams[i]);
+            cstmt.setString(i+1, procParams[i]);
         }
         String currentDB = null;
         if (procParams[2] != null && procParams[2] != "") {//pktable_qualifier
@@ -879,7 +879,7 @@ public final class SQLServerDatabaseMetaData implements java.sql.DatabaseMetaDat
         } else if (procParams[5] != null && procParams[5] != "") {//fktable_qualifier
             currentDB = switchCatalogs(procParams[5]);
         }
-        ResultSet rs = pstmt.executeQuery();
+        ResultSet rs = cstmt.executeQuery();
         if (currentDB != null) {
             switchCatalogs(currentDB);
         }
