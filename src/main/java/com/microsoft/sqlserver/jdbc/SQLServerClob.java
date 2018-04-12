@@ -304,6 +304,7 @@ abstract class SQLServerClobBase implements Serializable {
 
     /**
      * Retrieves the number of characters in the CLOB value designated by this Clob object.
+     * In the case of a stream, 2 bytes per character
      * 
      * @throws SQLException
      *             when an error occurs
@@ -312,7 +313,7 @@ abstract class SQLServerClobBase implements Serializable {
     public long length() throws SQLException {
         checkClosed();
         if (value == null && activeStreams.get(0) instanceof PLPInputStream) {
-            return (long)((PLPInputStream)activeStreams.get(0)).payloadLength;
+            return (long)((PLPInputStream)activeStreams.get(0)).payloadLength/2;
         }
         getStringFromStream();
         return value.length();

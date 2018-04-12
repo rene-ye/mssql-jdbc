@@ -246,10 +246,10 @@ class ReaderInputStream extends InputStream {
                     throw new IOException(SQLServerException.getErrString("R_streamReadReturnedInvalidValue"));
 
                 // Check that the reader isn't trying to return more data than we expect
-                //if (DataTypes.UNKNOWN_STREAM_LENGTH != readerLength && charsRead > readerLength - readerCharsRead) {
-                //    MessageFormat form = new MessageFormat(SQLServerException.getErrString("R_mismatchedStreamLength"));
-                //    throw new IOException(form.format(new Object[] {readerLength, readerCharsRead}));
-                //}
+                if (DataTypes.UNKNOWN_STREAM_LENGTH != readerLength && charsRead > readerLength - readerCharsRead) {
+                    MessageFormat form = new MessageFormat(SQLServerException.getErrString("R_mismatchedStreamLength"));
+                    throw new IOException(form.format(new Object[] {readerLength, readerCharsRead}));
+                }
 
                 readerCharsRead += charsRead;
             }
