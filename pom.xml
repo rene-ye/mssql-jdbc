@@ -57,6 +57,13 @@
 			<optional>true</optional>
 		</dependency>
 		
+		<dependency>
+		    <groupId>net.jodah</groupId>
+		    <artifactId>failsafe</artifactId>
+		    <version>1.1.0</version>
+		    <optional>true</optional>
+		</dependency>
+		
 		<!-- dependencies for running tests -->
 		<dependency>
 			<groupId>junit</groupId>

@@ -36,6 +36,7 @@ import java.sql.Savepoint;
 import java.sql.Statement;
 import java.sql.Struct;
 import java.text.MessageFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -58,6 +59,9 @@ import org.ietf.jgss.GSSException;
 import mssql.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap;
 import mssql.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap.Builder;
 import mssql.googlecode.concurrentlinkedhashmap.EvictionListener;
+import net.jodah.failsafe.Failsafe;
+import net.jodah.failsafe.RetryPolicy;
+import net.jodah.failsafe.function.CheckedRunnable;
 
 /**
  * SQLServerConnection implements a JDBC connection to SQL Server. SQLServerConnections support JDBC connection pooling and may be either physical
@@ -1834,6 +1838,21 @@ public class SQLServerConnection implements ISQLServerConnection {
         return this;
 
     }
+    
+    private boolean isAbortingExceptionCode(int errCode) {
+        System.out.println(errCode);
+        List<Integer> doNotReturn = Arrays.asList(
+                SQLServerException.LOGON_FAILED,
+                SQLServerException.PASSWORD_EXPIRED,
+                SQLServerException.USER_ACCOUNT_LOCKED,
+                SQLServerException.DRIVER_ERROR_INVALID_TDS,
+                SQLServerException.DRIVER_ERROR_SSL_FAILED,
+                SQLServerException.DRIVER_ERROR_INTERMITTENT_TLS_FAILED,
+                SQLServerException.DRIVER_ERROR_UNSUPPORTED_CONFIG,
+                SQLServerException.ERROR_SOCKET_TIMEOUT
+                );
+        return doNotReturn.contains(errCode);
+    }
 
     // This function is used by non failover and failover cases. Even when we make a standard connection the server can provide us with its
     // FO partner.
@@ -1951,17 +1970,22 @@ public class SQLServerConnection implements ISQLServerConnection {
                     connectionlogger.fine(toString() + " This attempt No: " + attemptNumber);
                 }
                 // end logging code
-
+                
                 // Attempt login.
                 // use Place holder to make sure that the failoverdemand is done.
-
-                connectHelper(currentConnectPlaceHolder, TimerRemaining(intervalExpire), timeout, useParallel, useTnir, (0 == attemptNumber), // Is
-                                                                                                                                              // this
-                                                                                                                                              // the
-                                                                                                                                              // TNIR
-                                                                                                                                              // first
-                                                                                                                                              // attempt
-                        TimerRemaining(intervalExpireFullTimeout)); // Only used when host resolves to >64 IPs
+                RetryPolicy rp = new RetryPolicy()
+                        .withBackoff(100,5000,TimeUnit.MILLISECONDS)
+                        .withJitter(50, TimeUnit.MILLISECONDS)
+                        .withMaxDuration(10, TimeUnit.SECONDS)
+                        .abortOn(failure -> isAbortingExceptionCode(((SQLException) failure).getErrorCode()));
+                Failsafe.with(rp)
+                .run(new runConnectHelper(currentConnectPlaceHolder, TimerRemaining(intervalExpire), timeout, useParallel, useTnir, (0 == attemptNumber), // Is
+                        // this
+                        // the
+                        // TNIR
+                        // first
+                        // attempt
+                        TimerRemaining(intervalExpireFullTimeout))); // Only used when host resolves to >64 IPs);
 
                 if (isRoutedInCurrentAttempt) {
                     // we ignore the failoverpartner ENVCHANGE, if we got routed.
@@ -2159,6 +2183,43 @@ public class SQLServerConnection implements ISQLServerConnection {
                 FailoverMapSingleton.putFailoverInfo(this, primary, activeConnectionProperties.getProperty(instanceNameProperty),
                         activeConnectionProperties.getProperty(databaseNameProperty), tempFailover, useFailoverHost, failoverPartnerServerProvided);
             }
+        }
+    }
+    
+    //Runs connectHelper
+    private class runConnectHelper implements CheckedRunnable {
+        
+        private ServerPortPlaceHolder serverInfo;
+        private int timeOutsliceInMillis, timeOutFullInSeconds, timeOutsliceInMillisForFullTimeout;
+        private boolean useParallel, useTnir, isTnirFirstAttempt;
+        private int attemptNumber = 0;
+        
+        public runConnectHelper(ServerPortPlaceHolder serverInfo,
+                int timeOutsliceInMillis,
+                int timeOutFullInSeconds,
+                boolean useParallel,
+                boolean useTnir,
+                boolean isTnirFirstAttempt,
+                int timeOutsliceInMillisForFullTimeout) {
+            this.serverInfo = serverInfo;
+            this.timeOutsliceInMillis = timeOutsliceInMillis;
+            this.timeOutFullInSeconds = timeOutFullInSeconds;
+            this.useParallel = useParallel;
+            this.useTnir = useTnir;
+            this.isTnirFirstAttempt = isTnirFirstAttempt;
+            this.timeOutsliceInMillisForFullTimeout = timeOutsliceInMillisForFullTimeout;
+        }
+        
+        @Override
+        public void run() throws SQLException {
+            System.out.println("Attempting to connect: " + attemptNumber++);
+            connectHelper(serverInfo,
+                    timeOutsliceInMillis,
+                    timeOutFullInSeconds,
+                    useParallel,
+                    useTnir,
+                    isTnirFirstAttempt,
+                    timeOutsliceInMillisForFullTimeout);
         }
     }
 
