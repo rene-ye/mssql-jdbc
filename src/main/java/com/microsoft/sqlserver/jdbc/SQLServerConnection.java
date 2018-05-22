@@ -2017,7 +2017,7 @@ public class SQLServerConnection implements ISQLServerConnection {
                 RetryPolicy rp = new RetryPolicy()
                         .withBackoff(100,5000,TimeUnit.MILLISECONDS)
                         .withJitter(50, TimeUnit.MILLISECONDS)
-                        .withMaxDuration(600, TimeUnit.SECONDS)
+                        .withMaxDuration(timeout, TimeUnit.SECONDS)
                         .abortOn(failure -> isAbortingExceptionCode(((SQLException) failure).getErrorCode()));
                 Failsafe.with(rp)
                 .onRetry(listener -> System.out.println("Retrying on error msg: " + listener.getMessage()))
