@@ -43,6 +43,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -1840,7 +1841,6 @@ public class SQLServerConnection implements ISQLServerConnection {
     }
     
     private boolean isAbortingExceptionCode(int errCode) {
-        System.out.println(errCode);
         List<Integer> doNotReturn = Arrays.asList(
                 SQLServerException.LOGON_FAILED,
                 SQLServerException.PASSWORD_EXPIRED,
@@ -1849,10 +1849,51 @@ public class SQLServerConnection implements ISQLServerConnection {
                 SQLServerException.DRIVER_ERROR_SSL_FAILED,
                 SQLServerException.DRIVER_ERROR_INTERMITTENT_TLS_FAILED,
                 SQLServerException.DRIVER_ERROR_UNSUPPORTED_CONFIG,
-                SQLServerException.ERROR_SOCKET_TIMEOUT
+                SQLServerException.ERROR_SOCKET_TIMEOUT,
+                SQLServerException.ERROR_QUERY_TIMEOUT
                 );
-        return doNotReturn.contains(errCode);
+        Optional<Integer> result = doNotReturn.stream().parallel()
+                .filter(num -> num == errCode)
+                .findAny();
+        return result.isPresent();
     }
+    
+    //Runs connectHelper
+    private class runConnectHelper implements CheckedRunnable {
+        
+        private ServerPortPlaceHolder serverInfo;
+        private int timeOutsliceInMillis, timeOutFullInSeconds, timeOutsliceInMillisForFullTimeout;
+        private boolean useParallel, useTnir, isTnirFirstAttempt;
+        private int attemptNumber = 0;
+        
+        public runConnectHelper(ServerPortPlaceHolder serverInfo,
+                int timeOutsliceInMillis,
+                int timeOutFullInSeconds,
+                boolean useParallel,
+                boolean useTnir,
+                boolean isTnirFirstAttempt,
+                int timeOutsliceInMillisForFullTimeout) {
+            this.serverInfo = serverInfo;
+            this.timeOutsliceInMillis = timeOutsliceInMillis;
+            this.timeOutFullInSeconds = timeOutFullInSeconds;
+            this.useParallel = useParallel;
+            this.useTnir = useTnir;
+            this.isTnirFirstAttempt = isTnirFirstAttempt;
+            this.timeOutsliceInMillisForFullTimeout = timeOutsliceInMillisForFullTimeout;
+        }
+        
+        @Override
+        public void run() throws SQLException {
+            connectHelper(serverInfo,
+                    timeOutsliceInMillis,
+                    timeOutFullInSeconds,
+                    useParallel,
+                    useTnir,
+                    isTnirFirstAttempt,
+                    timeOutsliceInMillisForFullTimeout);
+        }
+    }
+
 
     // This function is used by non failover and failover cases. Even when we make a standard connection the server can provide us with its
     // FO partner.
@@ -1976,9 +2017,10 @@ public class SQLServerConnection implements ISQLServerConnection {
                 RetryPolicy rp = new RetryPolicy()
                         .withBackoff(100,5000,TimeUnit.MILLISECONDS)
                         .withJitter(50, TimeUnit.MILLISECONDS)
-                        .withMaxDuration(10, TimeUnit.SECONDS)
+                        .withMaxDuration(600, TimeUnit.SECONDS)
                         .abortOn(failure -> isAbortingExceptionCode(((SQLException) failure).getErrorCode()));
                 Failsafe.with(rp)
+                .onRetry(listener -> System.out.println("Retrying on error msg: " + listener.getMessage()))
                 .run(new runConnectHelper(currentConnectPlaceHolder, TimerRemaining(intervalExpire), timeout, useParallel, useTnir, (0 == attemptNumber), // Is
                         // this
                         // the
@@ -2186,43 +2228,6 @@ public class SQLServerConnection implements ISQLServerConnection {
         }
     }
     
-    //Runs connectHelper
-    private class runConnectHelper implements CheckedRunnable {
-        
-        private ServerPortPlaceHolder serverInfo;
-        private int timeOutsliceInMillis, timeOutFullInSeconds, timeOutsliceInMillisForFullTimeout;
-        private boolean useParallel, useTnir, isTnirFirstAttempt;
-        private int attemptNumber = 0;
-        
-        public runConnectHelper(ServerPortPlaceHolder serverInfo,
-                int timeOutsliceInMillis,
-                int timeOutFullInSeconds,
-                boolean useParallel,
-                boolean useTnir,
-                boolean isTnirFirstAttempt,
-                int timeOutsliceInMillisForFullTimeout) {
-            this.serverInfo = serverInfo;
-            this.timeOutsliceInMillis = timeOutsliceInMillis;
-            this.timeOutFullInSeconds = timeOutFullInSeconds;
-            this.useParallel = useParallel;
-            this.useTnir = useTnir;
-            this.isTnirFirstAttempt = isTnirFirstAttempt;
-            this.timeOutsliceInMillisForFullTimeout = timeOutsliceInMillisForFullTimeout;
-        }
-        
-        @Override
-        public void run() throws SQLException {
-            System.out.println("Attempting to connect: " + attemptNumber++);
-            connectHelper(serverInfo,
-                    timeOutsliceInMillis,
-                    timeOutFullInSeconds,
-                    useParallel,
-                    useTnir,
-                    isTnirFirstAttempt,
-                    timeOutsliceInMillisForFullTimeout);
-        }
-    }
-
     // reset all params that could have been changed due to ENVCHANGE tokens to defaults,
     // excluding those changed due to routing ENVCHANGE token
     void resetNonRoutingEnvchangeValues() {
