@@ -2023,8 +2023,6 @@ public class SQLServerConnection implements ISQLServerConnection {
                 if ((SQLServerException.LOGON_FAILED == sqlex.getErrorCode()) // actual logon failed, i.e. bad password
                         || (SQLServerException.PASSWORD_EXPIRED == sqlex.getErrorCode()) // actual logon failed, i.e. password isExpired
                         || (SQLServerException.USER_ACCOUNT_LOCKED == sqlex.getErrorCode()) // actual logon failed, i.e. user account locked
-                        || (SQLServerException.DRIVER_ERROR_INVALID_TDS == sqlex.getDriverErrorCode()) // invalid TDS received from server
-                        || (SQLServerException.DRIVER_ERROR_SSL_FAILED == sqlex.getDriverErrorCode()) // failure negotiating SSL
                         || (SQLServerException.DRIVER_ERROR_INTERMITTENT_TLS_FAILED == sqlex.getDriverErrorCode()) // failure TLS1.2
                         || (SQLServerException.DRIVER_ERROR_UNSUPPORTED_CONFIG == sqlex.getDriverErrorCode()) // unsupported configuration (e.g.
                                                                                                               // Sphinx, invalid packet size, etc.)
