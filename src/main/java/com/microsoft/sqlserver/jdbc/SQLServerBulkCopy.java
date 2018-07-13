@@ -2479,7 +2479,7 @@ public class SQLServerBulkCopy implements java.lang.AutoCloseable, java.io.Seria
                         throw new SQLServerException(null, form.format(new Object[] {}), null, 0, false);
                     }
                     writeSqlVariant(tdsWriter, colValue, sourceResultSet, srcColOrdinal, destColOrdinal, bulkJdbcType,
-                            bulkScale, isStreaming);
+                            isStreaming);
                     break;
                 default:
                     MessageFormat form = new MessageFormat(SQLServerException.getErrString("R_BulkTypeNotSupported"));
@@ -2506,7 +2506,7 @@ public class SQLServerBulkCopy implements java.lang.AutoCloseable, java.io.Seria
      * @throws SQLServerException
      */
     private void writeSqlVariant(TDSWriter tdsWriter, Object colValue, ResultSet sourceResultSet, int srcColOrdinal,
-            int destColOrdinal, int bulkJdbcType, int bulkScale, boolean isStreaming) throws SQLServerException {
+            int destColOrdinal, int bulkJdbcType, boolean isStreaming) throws SQLServerException {
         if (null == colValue) {
             writeNullToTdsWriter(tdsWriter, bulkJdbcType, isStreaming);
             return;
