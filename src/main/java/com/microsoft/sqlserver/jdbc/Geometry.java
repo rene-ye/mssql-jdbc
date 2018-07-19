@@ -7,6 +7,7 @@ package com.microsoft.sqlserver.jdbc;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.text.MessageFormat;
 
 
 public class Geometry extends SQLServerSpatialDatatype {
@@ -404,7 +405,13 @@ public class Geometry extends SQLServerSpatialDatatype {
     }
 
     private void readPoints() throws SQLServerException {
-        points = new double[2 * numberOfPoints];
+        try {//if no limit of points is allowed, this should be an array of arrays
+            points = new double[2 * numberOfPoints];
+        } catch (NegativeArraySizeException | OutOfMemoryError e) {
+            MessageFormat form = new MessageFormat(SQLServerException.getErrString("R_ParsingError"));
+            Object[] msgArgs = {JDBCType.VARBINARY};//should throw some kind of 'array size too large error here'
+            throw new SQLServerException(this, form.format(msgArgs), null, 0, false);
+        }
         for (int i = 0; i < numberOfPoints; i++) {
             points[2 * i] = readDouble();
             points[2 * i + 1] = readDouble();
