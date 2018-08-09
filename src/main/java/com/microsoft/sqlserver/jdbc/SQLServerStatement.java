@@ -246,6 +246,7 @@ public class SQLServerStatement implements ISQLServerStatement {
      */
     synchronized void decrResultSetCount() {
         resultSetCount--;
+        this.connection.sessionRecovery.decrementUnprocessedResponseCount();
         assert resultSetCount >= 0;
 
         // close statement if no more result sets opened

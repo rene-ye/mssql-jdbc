@@ -94,7 +94,7 @@ public class SQLServerConnection implements ISQLServerConnection {
         return fedAuthToken;
     }
 
-    private SessionRecoveryFeature sessionRecovery = new SessionRecoveryFeature(this);
+    protected SessionRecoveryFeature sessionRecovery = new SessionRecoveryFeature(this);
     /**
      * denotes the state of the SqlServerConnection
      */
