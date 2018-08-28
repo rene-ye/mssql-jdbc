@@ -2383,6 +2383,47 @@ public class SQLServerConnection implements ISQLServerConnection {
     SessionRecoveryFeature getSessionRecovery() {
         return sessionRecovery;
     }
+    
+    /**
+     * Executes a command through the scheduler.
+     *
+     * @param newCommand
+     *            the command to execute
+     */
+    boolean executeCommand2(TDSCommand newCommand) throws SQLServerException {
+        // Detach (buffer) the response from any previously executing
+        // command so that we can execute the new command.
+        //
+        // Note that detaching the response does not process it. Detaching just
+        // buffers the response off of the wire to clear the TDS channel.
+        if (null != currentCommand) {
+            currentCommand.detach();
+            currentCommand = null;
+        }
+        SQLServerException reconnectException = null;
+
+        // The implementation of this scheduler is pretty simple...
+        // Since only one command at a time may use a connection
+        // (to avoid TDS protocol errors), just synchronize to
+        // serialize command execution.
+        boolean commandComplete = false;
+        try {
+            commandComplete = newCommand.execute(tdsChannel.getWriter(), tdsChannel.getReader(newCommand));
+        }
+        finally {
+            // We should never displace an existing currentCommand
+            // assert null == currentCommand;
+
+            // If execution of the new command left response bytes on the wire
+            // (e.g. a large ResultSet or complex response with multiple results)
+            // then remember it as the current command so that any subsequent call
+            // to executeCommand will detach it before executing another new command.
+            if (!commandComplete && !isSessionUnAvailable())
+                currentCommand = newCommand;
+        }
+
+        return commandComplete;
+    }
 
     /**
      * Executes a command through the scheduler.
@@ -2531,8 +2572,27 @@ public class SQLServerConnection implements ISQLServerConnection {
                 return true;
             }
         }
-
         executeCommand(new ConnectionCommand(sql, logContext));
+    }
+    
+    private void connectionCommand2(String sql,
+            String logContext) throws SQLServerException {
+        final class ConnectionCommand extends UninterruptableTDSCommand {
+            final String sql;
+
+            ConnectionCommand(String sql,
+                    String logContext) {
+                super(logContext);
+                this.sql = sql;
+            }
+
+            final boolean doExecute() throws SQLServerException {
+                startRequest(TDS.PKT_QUERY).writeString(sql);
+                TDSParser.parse(startResponse(), getLogContext());
+                return true;
+            }
+        }
+        executeCommand2(new ConnectionCommand(sql, logContext));
     }
 
     /**
@@ -3341,7 +3401,13 @@ public class SQLServerConnection implements ISQLServerConnection {
                 originalCatalog = sCatalog;
                 String sqlStmt = sqlStatementToInitialize();
                 if (sqlStmt != null) {
-                    connectionCommand(sqlStmt, "Change Settings");
+                    int rsCount = this.sessionRecovery.getUnprocessedResponseCount();
+                    if (!this.sessionRecovery.reconnectThread.isRunning()) {
+                        connectionCommand(sqlStmt, "Change Settings");
+                    } else {
+                        connectionCommand2(sqlStmt, "Change Settings");
+                    }
+                    this.sessionRecovery.setUnprocessedResponseCount(rsCount);
                 }
             }
         }
@@ -5221,9 +5287,8 @@ public class SQLServerConnection implements ISQLServerConnection {
         DriverJDBCVersion.checkSupportsJDBC4();
         loggerExternal.entering(getClassNameLogging(), "getClientInfo");
         checkClosed();
-        Properties p = new Properties();
-        loggerExternal.exiting(getClassNameLogging(), "getClientInfo", p);
-        return p;
+        loggerExternal.exiting(getClassNameLogging(), "getClientInfo", activeConnectionProperties);
+        return activeConnectionProperties;
     }
 
     public String getClientInfo(String name) throws SQLException {
@@ -5231,7 +5296,7 @@ public class SQLServerConnection implements ISQLServerConnection {
         loggerExternal.entering(getClassNameLogging(), "getClientInfo", name);
         checkClosed();
         loggerExternal.exiting(getClassNameLogging(), "getClientInfo", null);
-        return null;
+        return activeConnectionProperties.getProperty(name);
     }
 
     public void setClientInfo(Properties properties) throws SQLClientInfoException {
@@ -5731,7 +5796,7 @@ class SessionRecoveryFeature extends FeatureExt {
     private volatile boolean reconnecting = false;
     
     // Reconnect class implements runnable and this object is sent to threadPoolExecutor to launch reconnection thread
-    private Reconnect reconnectThread;// = new Reconnect(conn);
+    Reconnect reconnectThread;// = new Reconnect(conn);
     // This is used to synchronize wait and notify amongst thread executing reconnection and the thread waiting for reconnection.
     Object reconnectStateSynchronizer = new Object();
     private boolean connectionRecoveryNegotiated = false;   // set to true if connection resiliency is negotiated between client and server
@@ -5778,15 +5843,18 @@ class SessionRecoveryFeature extends FeatureExt {
     // and disables CR if count is greater than 90 when connection is dead.
 
     int getUnprocessedResponseCount() {
+        System.out.println("Getting count: "+unprocessedResponseCount);
         return unprocessedResponseCount.get();
     }
 
     void setUnprocessedResponseCount(int unprocessedResponseCount) {
-        this.unprocessedResponseCount.set(0);
+        System.out.println("Setting count to: "+unprocessedResponseCount);
+        this.unprocessedResponseCount.set(unprocessedResponseCount);
     }
 
     protected void incrementUnprocessedResponseCount() {
         if (connectionRecoveryNegotiated && connectionRecoveryPossible && !reconnecting) {
+            System.out.println("Incrementing");
             if (unprocessedResponseCount.incrementAndGet() < 0)
                 connectionRecoveryPossible = false; // When this number rolls over, connection resiliency is disabled for the rest of the life of the
                                                     // connection.
@@ -5795,6 +5863,7 @@ class SessionRecoveryFeature extends FeatureExt {
 
     protected void decrementUnprocessedResponseCount() {
         if (connectionRecoveryNegotiated && connectionRecoveryPossible && !reconnecting) {
+            System.out.println("Decrementing");
             if (unprocessedResponseCount.decrementAndGet() < 0)
                 connectionRecoveryPossible = false; // When this number rolls over, connection resiliency is disabled for the rest of the life of the
                                                     // connection
@@ -5873,6 +5942,7 @@ class SessionRecoveryFeature extends FeatureExt {
             while ((connectRetryCount != 0) && (!stopRequest) && (reconnecting == true)) {
                 try {
                     eReceived = null;
+                    System.out.println("Attempting to reconnect");
                     con.connect(null, con.getPooledConnectionParent());  // exception caught here but should be thrown appropriately. Add exception
                                                                     // variable and CheckException() API
 //                    if (connectionlogger.isLoggable(Level.FINER)) {
@@ -5881,6 +5951,7 @@ class SessionRecoveryFeature extends FeatureExt {
                     reconnecting = false;
                 }
                 catch (SQLServerException e) {
+                    System.out.println("Exception caught: " + e.getMessage());
                     if (!stopRequest) {
                         eReceived = e;
                         if (conn.isFatalError(e)) {
