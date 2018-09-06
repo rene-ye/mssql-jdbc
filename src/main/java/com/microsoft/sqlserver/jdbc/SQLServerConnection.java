@@ -1952,6 +1952,7 @@ public class SQLServerConnection implements ISQLServerConnection {
             if (sessionRecovery.getConnectRetryCount() != 0 || sessionRecovery.sessionStateTable == null)
                 sessionRecovery.sessionStateTable = new SessionStateTable(negotiatedEncryptionLevel);
             executeCommand(new LogonCommand());
+            sessionRecovery.setUnprocessedResponseCount(0);
         }
     }
 
@@ -3308,6 +3309,9 @@ public class SQLServerConnection implements ISQLServerConnection {
                 if (databaseCollation != null && databaseCollation.isEqual(sessionRecovery.sessionStateTable.sOriginalCollation)) {
                     tdsWriter.writeByte((byte) 0);
                 }
+                else if (databaseCollation == null && sessionRecovery.sessionStateTable.sOriginalCollation != null) {
+                    databaseCollation = sessionRecovery.sessionStateTable.sOriginalCollation;
+                }
                 else {
                     tdsWriter.writeByte((byte) SQLCollation.tdsLength());
                     databaseCollation.writeCollation(tdsWriter);
@@ -3401,13 +3405,11 @@ public class SQLServerConnection implements ISQLServerConnection {
                 originalCatalog = sCatalog;
                 String sqlStmt = sqlStatementToInitialize();
                 if (sqlStmt != null) {
-                    int rsCount = this.sessionRecovery.getUnprocessedResponseCount();
                     if (!this.sessionRecovery.reconnectThread.isRunning()) {
                         connectionCommand(sqlStmt, "Change Settings");
                     } else {
                         connectionCommand2(sqlStmt, "Change Settings");
                     }
-                    this.sessionRecovery.setUnprocessedResponseCount(rsCount);
                 }
             }
         }
@@ -5951,7 +5953,6 @@ class SessionRecoveryFeature extends FeatureExt {
                     reconnecting = false;
                 }
                 catch (SQLServerException e) {
-                    System.out.println("Exception caught: " + e.getMessage());
                     if (!stopRequest) {
                         eReceived = e;
                         if (conn.isFatalError(e)) {

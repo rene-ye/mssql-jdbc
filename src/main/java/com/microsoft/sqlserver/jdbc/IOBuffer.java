@@ -7650,7 +7650,7 @@ abstract class TDSCommand {
             }
         }
 
-        // A new response is received hence increment unprocessed respose count     
+        // A new response is received hence increment unprocessed response count
         tdsWriter.getConnection().getSessionRecovery().incrementUnprocessedResponseCount();
         
         return tdsReader;
@@ -7658,10 +7658,10 @@ abstract class TDSCommand {
 }
 
 /**
- * UninterruptableTDSCommand encapsulates an uninterruptable TDS conversation.
+ * UninterruptableTDSCommand encapsulates an interruptible TDS conversation.
  *
- * TDSCommands have interruptability built in. However, some TDSCommands such as DTC commands, connection commands, cursor close and prepared
- * statement handle close shouldn't be interruptable. This class provides a base implementation for such commands.
+ * TDSCommands have interruptibility built in. However, some TDSCommands such as DTC commands, connection commands, cursor close and prepared
+ * statement handle close shouldn't be interruptible. This class provides a base implementation for such commands.
  */
 abstract class UninterruptableTDSCommand extends TDSCommand {
     UninterruptableTDSCommand(String logContext) {

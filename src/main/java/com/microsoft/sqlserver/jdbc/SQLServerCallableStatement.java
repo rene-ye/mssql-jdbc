@@ -1290,8 +1290,10 @@ public class SQLServerCallableStatement extends SQLServerPreparedStatement imple
 
     /* L0 */ public Object getObject(int index,
             java.util.Map<String, Class<?>> map) throws SQLServerException {
-        NotImplemented();
-        return null;
+        loggerExternal.entering(getClassNameLogging(), "getObject", index);
+        Object o = (Object) getValue(index, JDBCType.UNKNOWN);
+        loggerExternal.exiting(getClassNameLogging(), "getObject", o);
+        return o;
     }
 
     /* L3 */ public Object getObject(String sCol,
@@ -1300,9 +1302,11 @@ public class SQLServerCallableStatement extends SQLServerPreparedStatement imple
         return getObject(findColumn(sCol), m);
     }
 
-    /* L0 */ public Ref getRef(int i) throws SQLServerException {
-        NotImplemented();
-        return null;
+    /* L0 */ public Ref getRef(int index) throws SQLServerException {
+        loggerExternal.entering(getClassNameLogging(), "getRef", index);
+        Ref r = (Ref) getValue(index, JDBCType.REF);
+        loggerExternal.exiting(getClassNameLogging(), "getRef", r);
+        return r;
     }
 
     /* L3 */ public Ref getRef(String sCol) throws SQLServerException {
@@ -1310,9 +1314,11 @@ public class SQLServerCallableStatement extends SQLServerPreparedStatement imple
         return getRef(findColumn(sCol));
     }
 
-    /* L0 */ public java.sql.Array getArray(int i) throws SQLServerException {
-        NotImplemented();
-        return null;
+    /* L0 */ public java.sql.Array getArray(int index) throws SQLServerException {
+        loggerExternal.entering(getClassNameLogging(), "getArray", index);
+        java.sql.Array a = (java.sql.Array) getValue(index, JDBCType.ARRAY);
+        loggerExternal.exiting(getClassNameLogging(), "getArray", a);
+        return a;
     }
 
     /* L3 */ public java.sql.Array getArray(String sCol) throws SQLServerException {
