@@ -25,7 +25,7 @@ import com.microsoft.sqlserver.testframework.DBConnection;
 import com.microsoft.sqlserver.testframework.DBPreparedStatement;
 import com.microsoft.sqlserver.testframework.DBResultSet;
 import com.microsoft.sqlserver.testframework.DBResultSetTypes;
-import com.microsoft.sqlserver.testframework.DBStatement;;
+import com.microsoft.sqlserver.testframework.DBStatement;
 
 
 @RunWith(JUnitPlatform.class)
@@ -55,7 +55,6 @@ public class bvtTest extends bvtTestSetup {
             assertTrue(!conn.isClosed(), TestResource.getResource("R_connShouldNotBeClosed"));
             conn.close();
             assertTrue(conn.isClosed(), TestResource.getResource("R_connShouldNotBeOpen"));
-
         }
     }
 
@@ -84,11 +83,8 @@ public class bvtTest extends bvtTestSetup {
      */
     @Test
     public void testCreateStatement() throws SQLException {
-
-        String query = "SELECT * FROM " + table1.getEscapedTableName() + ";";
-
         try (DBConnection conn = new DBConnection(connectionString); DBStatement stmt = conn.createStatement();
-                DBResultSet rs = stmt.executeQuery(query)) {
+                DBResultSet rs = stmt.selectAll(table1)) {
             rs.verify(table1);
         }
     }
@@ -116,12 +112,9 @@ public class bvtTest extends bvtTestSetup {
      */
     @Test
     public void testStmtForwardOnlyReadOnly() throws SQLException, ClassNotFoundException {
-
-        String query = "SELECT * FROM " + table1.getEscapedTableName();
-
         try (DBConnection conn = new DBConnection(connectionString);
                 DBStatement stmt = conn.createStatement(DBResultSetTypes.TYPE_FORWARD_ONLY_CONCUR_READ_ONLY);
-                DBResultSet rs = stmt.executeQuery(query)) {
+                DBResultSet rs = stmt.selectAll(table1)) {
 
             rs.next();
             rs.verifyCurrentRow(table1);
@@ -167,12 +160,9 @@ public class bvtTest extends bvtTestSetup {
      */
     @Test
     public void testStmtScrollSensitiveReadOnly() throws SQLException {
-
-        String query = "SELECT * FROM " + table1.getEscapedTableName();
-
         try (DBConnection conn = new DBConnection(connectionString);
                 DBStatement stmt = conn.createStatement(DBResultSetTypes.TYPE_SCROLL_SENSITIVE_CONCUR_READ_ONLY);
-                DBResultSet rs = stmt.executeQuery(query)) {
+                DBResultSet rs = stmt.selectAll(table1)) {
             rs.next();
             rs.next();
             rs.verifyCurrentRow(table1);
@@ -192,14 +182,10 @@ public class bvtTest extends bvtTestSetup {
      */
     @Test
     public void testStmtForwardOnlyUpdateable() throws SQLException {
-
-        String query = "SELECT * FROM " + table1.getEscapedTableName();
-
         try (DBConnection conn = new DBConnection(connectionString);
                 DBStatement stmt = conn.createStatement(DBResultSetTypes.TYPE_FORWARD_ONLY_CONCUR_UPDATABLE);
-                DBResultSet rs = stmt.executeQuery(query)) {
+                DBResultSet rs = stmt.selectAll(table1)) {
             rs.next();
-
             // Verify resultset behavior
             rs.next();
             rs.verifyCurrentRow(table1);
@@ -223,12 +209,9 @@ public class bvtTest extends bvtTestSetup {
      */
     @Test
     public void testStmtScrollSensitiveUpdatable() throws SQLException {
-
-        String query = "SELECT * FROM " + table1.getEscapedTableName();
-
         try (DBConnection conn = new DBConnection(connectionString);
                 DBStatement stmt = conn.createStatement(DBResultSetTypes.TYPE_SCROLL_SENSITIVE_CONCUR_UPDATABLE);
-                DBResultSet rs = stmt.executeQuery(query)) {
+                DBResultSet rs = stmt.selectAll(table1)) {
 
             // Verify resultset behavior
             rs.next();
@@ -272,11 +255,9 @@ public class bvtTest extends bvtTestSetup {
     public void testStmtSserverCursorForwardOnly() throws SQLException {
 
         DBResultSetTypes rsType = DBResultSetTypes.TYPE_FORWARD_ONLY_CONCUR_READ_ONLY;
-        String query = "SELECT * FROM " + table1.getEscapedTableName();
-
         try (DBConnection conn = new DBConnection(connectionString);
                 DBStatement stmt = conn.createStatement(rsType.resultsetCursor, rsType.resultSetConcurrency);
-                DBResultSet rs = stmt.executeQuery(query)) {
+                DBResultSet rs = stmt.selectAll(table1)) {
             // Verify resultset behavior
             rs.next();
             rs.verify(table1);
@@ -291,17 +272,17 @@ public class bvtTest extends bvtTestSetup {
     @Test
     public void testCreatepreparedStatement() throws SQLException {
 
-        String colName = table1.getColumnName(7);
+        String colName = table1.getEscapedColumnName(7);
         String value = table1.getRowData(7, 0).toString();
-        String query = "SELECT * from " + table1.getEscapedTableName() + " where [" + colName + "] = ? ";
+        String query = "SELECT * from " + table1.getEscapedTableName() + " where " + colName + " = ? ";
 
         try (DBConnection conn = new DBConnection(connectionString);
                 DBPreparedStatement pstmt = conn.prepareStatement(query)) {
 
             pstmt.setObject(1, new BigDecimal(value));
-            DBResultSet rs = pstmt.executeQuery();
-            rs.verify(table1);
-            rs.close();
+            try (DBResultSet rs = pstmt.executeQuery()) {
+                rs.verify(table1);
+            }
         }
     }
 
@@ -312,11 +293,8 @@ public class bvtTest extends bvtTestSetup {
      */
     @Test
     public void testResultSet() throws SQLException {
-
-        String query = "SELECT * FROM " + table1.getEscapedTableName();
-
         try (DBConnection conn = new DBConnection(connectionString); DBStatement stmt = conn.createStatement();
-                DBResultSet rs = stmt.executeQuery(query)) {
+                DBResultSet rs = stmt.selectAll(table1)) {
             // verify resultSet
             rs.verify(table1);
         }
@@ -329,11 +307,8 @@ public class bvtTest extends bvtTestSetup {
      */
     @Test
     public void testResultSetAndClose() throws SQLException {
-
-        String query = "SELECT * FROM " + table1.getEscapedTableName();
-
         try (DBConnection conn = new DBConnection(connectionString); DBStatement stmt = conn.createStatement();
-                DBResultSet rs = stmt.executeQuery(query)) {
+                DBResultSet rs = stmt.selectAll(table1)) {
 
             try {
                 if (null != rs)
@@ -351,28 +326,24 @@ public class bvtTest extends bvtTestSetup {
      */
     @Test
     public void testTwoResultsetsDifferentStmt() throws SQLException {
-
-        String query = "SELECT * FROM " + table1.getEscapedTableName();
-        String query2 = "SELECT * FROM " + table2.getEscapedTableName();
-
         try (DBConnection conn = new DBConnection(connectionString); DBStatement stmt1 = conn.createStatement();
                 DBStatement stmt2 = conn.createStatement()) {
 
-            DBResultSet rs1 = stmt1.executeQuery(query);
-            DBResultSet rs2 = stmt2.executeQuery(query2);
+            try (DBResultSet rs1 = stmt1.selectAll(table1); DBResultSet rs2 = stmt2.selectAll(table2)) {
 
-            // Interleave resultset calls
-            rs1.next();
-            rs1.verifyCurrentRow(table1);
-            rs2.next();
-            rs2.verifyCurrentRow(table2);
-            rs1.next();
-            rs1.verifyCurrentRow(table1);
-            rs1.verify(table1);
-            rs1.close();
-            rs2.next();
-            rs2.verify(table2);
-            rs2.close();
+                // Interleave resultset calls
+                rs1.next();
+                rs1.verifyCurrentRow(table1);
+                rs2.next();
+                rs2.verifyCurrentRow(table2);
+                rs1.next();
+                rs1.verifyCurrentRow(table1);
+                rs1.verify(table1);
+                rs1.close();
+                rs2.next();
+                rs2.verify(table2);
+                rs2.close();
+            }
         }
     }
 
@@ -383,31 +354,27 @@ public class bvtTest extends bvtTestSetup {
      */
     @Test
     public void testTwoResultsetsSameStmt() throws SQLException {
-
-        String query = "SELECT * FROM " + table1.getEscapedTableName();
-        String query2 = "SELECT * FROM " + table2.getEscapedTableName();
-
         try (DBConnection conn = new DBConnection(connectionString); DBStatement stmt = conn.createStatement()) {
 
-            DBResultSet rs1 = stmt.executeQuery(query);
-            DBResultSet rs2 = stmt.executeQuery(query2);
-            // Interleave resultset calls. rs is expected to be closed
-            try {
-                rs1.next();
-            } catch (SQLException e) {
-                assertEquals(e.getMessage(), TestResource.getResource("R_resultsetClosed"));
+            try (DBResultSet rs1 = stmt.selectAll(table1); DBResultSet rs2 = stmt.selectAll(table2)) {
+                // Interleave resultset calls. rs is expected to be closed
+                try {
+                    rs1.next();
+                } catch (SQLException e) {
+                    assertEquals(e.getMessage(), TestResource.getResource("R_resultsetClosed"));
+                }
+                rs2.next();
+                rs2.verifyCurrentRow(table2);
+                try {
+                    rs1.next();
+                } catch (SQLException e) {
+                    assertEquals(e.getMessage(), TestResource.getResource("R_resultsetClosed"));
+                }
+                rs1.close();
+                rs2.next();
+                rs2.verify(table2);
+                rs2.close();
             }
-            rs2.next();
-            rs2.verifyCurrentRow(table2);
-            try {
-                rs1.next();
-            } catch (SQLException e) {
-                assertEquals(e.getMessage(), TestResource.getResource("R_resultsetClosed"));
-            }
-            rs1.close();
-            rs2.next();
-            rs2.verify(table2);
-            rs2.close();
         }
     }
 
@@ -418,9 +385,8 @@ public class bvtTest extends bvtTestSetup {
      */
     @Test
     public void testResultSetAndCloseStmt() throws SQLException {
-        String query = "SELECT * FROM " + table1.getEscapedTableName();
         try (DBConnection conn = new DBConnection(connectionString); DBStatement stmt = conn.createStatement();
-                DBResultSet rs = stmt.executeQuery(query)) {
+                DBResultSet rs = stmt.selectAll(table1)) {
 
             stmt.close(); // this should close the resultSet
             try {
@@ -439,10 +405,8 @@ public class bvtTest extends bvtTestSetup {
      */
     @Test
     public void testResultSetSelectMethod() throws SQLException {
-
-        String query = "SELECT * FROM " + table1.getEscapedTableName();
         try (DBConnection conn = new DBConnection(connectionString + ";selectMethod=cursor;");
-                DBStatement stmt = conn.createStatement(); DBResultSet rs = stmt.executeQuery(query)) {
+                DBStatement stmt = conn.createStatement(); DBResultSet rs = stmt.selectAll(table1)) {
             rs.verify(table1);
         }
     }
@@ -456,9 +420,9 @@ public class bvtTest extends bvtTestSetup {
     public static void terminate() throws SQLException {
 
         try (DBConnection conn = new DBConnection(connectionString); DBStatement stmt = conn.createStatement()) {
-            stmt.execute("if object_id('" + table1.getEscapedTableName() + "','U') is not null" + " drop table "
+            stmt.execute("if object_id('" + table2.getEscapedQuotesTableName() + "','U') is not null" + " drop table "
                     + table1.getEscapedTableName());
-            stmt.execute("if object_id('" + table2.getEscapedTableName() + "','U') is not null" + " drop table "
+            stmt.execute("if object_id('" + table2.getEscapedQuotesTableName() + "','U') is not null" + " drop table "
                     + table2.getEscapedTableName());
         }
     }

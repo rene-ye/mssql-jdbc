@@ -21,6 +21,10 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLXML;
 import java.sql.Statement;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.TimeZone;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -28,9 +32,9 @@ import org.junit.platform.runner.JUnitPlatform;
 import org.junit.runner.RunWith;
 
 import com.microsoft.sqlserver.jdbc.ISQLServerResultSet;
+import com.microsoft.sqlserver.jdbc.RandomUtil;
+import com.microsoft.sqlserver.jdbc.TestUtils;
 import com.microsoft.sqlserver.testframework.AbstractTest;
-import com.microsoft.sqlserver.testframework.Utils;
-import com.microsoft.sqlserver.testframework.util.RandomUtil;
 
 
 @RunWith(JUnitPlatform.class)
@@ -241,6 +245,46 @@ public class ResultSetTest extends AbstractTest {
     }
 
     /**
+     * Tests getObject(n, java.time.LocalDateTime.class).
+     * 
+     * @throws SQLException
+     */
+    @Test
+    public void testGetObjectAsLocalDateTime() throws SQLException {
+        try (Connection con = DriverManager.getConnection(connectionString); Statement stmt = con.createStatement()) {
+            TimeZone prevTimeZone = TimeZone.getDefault();
+            TimeZone.setDefault(TimeZone.getTimeZone("America/Edmonton"));
+
+            // a local date/time that does not actually exist because of Daylight Saving Time
+            final String testValueDate = "2018-03-11";
+            final String testValueTime = "02:00:00.1234567";
+            final String testValueDateTime = testValueDate + "T" + testValueTime;
+
+            stmt.executeUpdate("CREATE TABLE " + tableName + " (id INT PRIMARY KEY, dt2 DATETIME2)");
+            stmt.executeUpdate("INSERT INTO " + tableName + " (id, dt2) VALUES (1, '" + testValueDateTime + "')");
+
+            try (ResultSet rs = stmt.executeQuery("SELECT dt2 FROM " + tableName + " WHERE id=1")) {
+                rs.next();
+
+                LocalDateTime expectedLocalDateTime = LocalDateTime.parse(testValueDateTime);
+                LocalDateTime actualLocalDateTime = rs.getObject(1, LocalDateTime.class);
+                assertEquals(expectedLocalDateTime, actualLocalDateTime);
+
+                LocalDate expectedLocalDate = LocalDate.parse(testValueDate);
+                LocalDate actualLocalDate = rs.getObject(1, LocalDate.class);
+                assertEquals(expectedLocalDate, actualLocalDate);
+
+                LocalTime expectedLocalTime = LocalTime.parse(testValueTime);
+                LocalTime actualLocalTime = rs.getObject(1, LocalTime.class);
+                assertEquals(expectedLocalTime, actualLocalTime);
+            } finally {
+                TestUtils.dropTableIfExists(tableName, stmt);
+                TimeZone.setDefault(prevTimeZone);
+            }
+        }
+    }
+
+    /**
      * Tests ResultSet#isWrapperFor and ResultSet#unwrap.
      * 
      * @throws SQLException
@@ -259,7 +303,7 @@ public class ResultSetTest extends AbstractTest {
                 assertSame(rs, rs.unwrap(ResultSet.class));
                 assertSame(rs, rs.unwrap(ISQLServerResultSet.class));
             } finally {
-                Utils.dropTableIfExists(tableName, stmt);
+                TestUtils.dropTableIfExists(tableName, stmt);
             }
         }
     }
@@ -271,26 +315,10 @@ public class ResultSetTest extends AbstractTest {
      */
     @Test
     public void testGetterOnNull() throws SQLException {
-        Connection con = null;
-        Statement stmt = null;
-        ResultSet rs = null;
-        try {
-            con = DriverManager.getConnection(connectionString);
-            stmt = con.createStatement();
-            rs = stmt.executeQuery("select null");
+        try (Connection con = DriverManager.getConnection(connectionString); Statement stmt = con.createStatement();
+                ResultSet rs = stmt.executeQuery("select null")) {
             rs.next();
             assertEquals(null, rs.getTime(1));
-        } finally {
-            if (con != null) {
-                con.close();
-            }
-            if (stmt != null) {
-                stmt.close();
-            }
-            if (rs != null) {
-                rs.close();
-            }
         }
     }
-
 }

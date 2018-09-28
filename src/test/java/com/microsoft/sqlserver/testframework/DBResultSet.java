@@ -20,8 +20,9 @@ import java.util.Calendar;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import com.microsoft.sqlserver.testframework.Utils.DBBinaryStream;
-import com.microsoft.sqlserver.testframework.Utils.DBCharacterStream;
+import com.microsoft.sqlserver.jdbc.TestUtils;
+import com.microsoft.sqlserver.jdbc.TestUtils.DBBinaryStream;
+import com.microsoft.sqlserver.jdbc.TestUtils.DBCharacterStream;
 
 
 /**
@@ -201,8 +202,12 @@ public class DBResultSet extends AbstractParentWrapper implements AutoCloseable 
         // getXXX - default mapping
         Object retrieved = this.getXXX(ordinal + 1, coercion);
 
-        // Verify
-        verifydata(ordinal, coercion, expectedData, retrieved);
+        try {
+            // Verify
+            verifydata(ordinal, coercion, expectedData, retrieved);
+        } catch (SQLException e) {
+            System.out.println("Compared & failed: " + expectedData + " ::: " + retrieved + " <<< ");
+        }
     }
 
     /**
@@ -324,7 +329,7 @@ public class DBResultSet extends AbstractParentWrapper implements AutoCloseable 
                 break;
 
             case java.sql.Types.BINARY:
-                assertTrue(Utils.parseByte((byte[]) expectedData, (byte[]) retrieved),
+                assertTrue(TestUtils.parseByte((byte[]) expectedData, (byte[]) retrieved),
                         " unexpected BINARY value, expected: " + expectedData + " ,received: " + retrieved);
                 break;
 

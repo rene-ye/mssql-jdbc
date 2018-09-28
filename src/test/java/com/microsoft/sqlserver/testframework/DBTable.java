@@ -16,9 +16,10 @@ import java.util.StringJoiner;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import com.microsoft.sqlserver.jdbc.RandomUtil;
+import com.microsoft.sqlserver.jdbc.TestUtils;
 import com.microsoft.sqlserver.testframework.sqlType.SqlType;
 import com.microsoft.sqlserver.testframework.sqlType.VariableLengthType;
-import com.microsoft.sqlserver.testframework.util.RandomUtil;
 
 
 /**
@@ -29,6 +30,7 @@ public class DBTable extends AbstractSQLGenerator {
     public static final Logger log = Logger.getLogger("DBTable");
     String tableName;
     String escapedTableName;
+    String escapedQuotesTableName;
     String tableDefinition;
     List<DBColumn> columns;
     int totalColumns;
@@ -71,6 +73,7 @@ public class DBTable extends AbstractSQLGenerator {
 
         this.tableName = RandomUtil.getIdentifier("table");
         this.escapedTableName = escapeIdentifier(tableName);
+        this.escapedQuotesTableName = TestUtils.escapeSingleQuotes(escapedTableName);
         this.schema = new DBSchema(autoGenerateSchema, alternateSchema);
         if (autoGenerateSchema) {
             if (unicode)
@@ -91,6 +94,7 @@ public class DBTable extends AbstractSQLGenerator {
     private DBTable(DBTable sourceTable) {
         this.tableName = RandomUtil.getIdentifier("table");
         this.escapedTableName = escapeIdentifier(tableName);
+        this.escapedQuotesTableName = TestUtils.escapeSingleQuotes(escapedTableName);
         this.columns = sourceTable.columns;
         this.totalColumns = columns.size();
         this.schema = sourceTable.schema;
@@ -100,12 +104,17 @@ public class DBTable extends AbstractSQLGenerator {
      * adds a columns for each SQL type in DBSchema
      */
     private void addColumns() {
-        totalColumns = schema.getNumberOfSqlTypes();
+        totalColumns = schema.getNumberOfSqlTypes() + 1; // Add 1 column for RowId (Type Int)
         columns = new ArrayList<>(totalColumns);
 
-        for (int i = 0; i < totalColumns; i++) {
-            SqlType sqlType = schema.getSqlType(i);
-            DBColumn column = new DBColumn(RandomUtil.getIdentifier(sqlType.getName()), sqlType);
+        // Add RowID column
+        SqlType sqlType = schema.getSqlType(1); // Type SqlInt
+        DBColumn column = new DBColumn(RandomUtil.getIdentifier("RowID"), sqlType);
+        columns.add(column);
+
+        for (int i = 0; i < totalColumns - 1; i++) {
+            sqlType = schema.getSqlType(i);
+            column = new DBColumn(RandomUtil.getIdentifier(sqlType.getName()), sqlType);
             columns.add(column);
         }
     }
@@ -114,12 +123,16 @@ public class DBTable extends AbstractSQLGenerator {
      * adds a columns for each SQL type in DBSchema
      */
     private void addColumns(boolean unicode) {
-        totalColumns = schema.getNumberOfSqlTypes();
+        totalColumns = schema.getNumberOfSqlTypes() + 1; // Add 1 column for RowId
         columns = new ArrayList<>(totalColumns);
 
-        for (int i = 0; i < totalColumns; i++) {
-            SqlType sqlType = schema.getSqlType(i);
-            DBColumn column;
+        // Add RowID column
+        SqlType sqlType = schema.getSqlType(1); // Type SqlInt
+        DBColumn column = new DBColumn(RandomUtil.getIdentifier("RowID"), sqlType);
+        columns.add(column);
+
+        for (int i = 0; i < totalColumns - 1; i++) {
+            sqlType = schema.getSqlType(i);
             if (unicode)
                 column = new DBColumn(RandomUtil.getIdentifier(sqlType.getName()) + "ĀĂŎՖએДЕЖЗИЙਟਖਞ", sqlType);
             else
@@ -148,6 +161,15 @@ public class DBTable extends AbstractSQLGenerator {
      */
     public String getEscapedTableName() {
         return escapedTableName;
+    }
+
+    /**
+     * gets escaped table name of the {@link DBTable} object to be used within single quotes
+     * 
+     * @return {@link String} escaped table name
+     */
+    public String getEscapedQuotesTableName() {
+        return escapedQuotesTableName;
     }
 
     public String getDefinitionOfColumns() {
@@ -299,7 +321,10 @@ public class DBTable extends AbstractSQLGenerator {
         // generate values for all columns
         for (int i = 0; i < totalColumns; i++) {
             DBColumn column = getColumn(i);
-            column.populateValues(totalRows);
+            if (i == 0)
+                column.populateRowId(totalRows);
+            else
+                column.populateValues(totalRows);
         }
     }
 
@@ -309,6 +334,10 @@ public class DBTable extends AbstractSQLGenerator {
 
     public String getColumnName(int columnIndex) {
         return getColumn(columnIndex).getColumnName();
+    }
+
+    public String getEscapedColumnName(int columnIndex) {
+        return getColumn(columnIndex).getEscapedColumnName();
     }
 
     public int totalColumns() {

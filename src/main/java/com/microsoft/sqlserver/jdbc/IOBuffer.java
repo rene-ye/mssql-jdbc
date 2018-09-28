@@ -3132,7 +3132,7 @@ final class TDSWriter {
     // the client MUST send the next packet with both ignore bit (0x02) and EOM bit (0x01)
     // set in the status to cancel the request.
     final boolean ignoreMessage() throws SQLServerException {
-        if (packetNum > 0) {
+        if (packetNum > 0 || TDS.PKT_BULK == this.tdsMessageType) {
             assert !isEOMSent;
 
             if (logger.isLoggable(Level.FINER))
@@ -3629,14 +3629,7 @@ final class TDSWriter {
                     ((Buffer) logBuffer).position(((Buffer) logBuffer).position() + 8);
             }
         } else {
-            valueBytes[0] = (byte) ((value >> 0) & 0xFF);
-            valueBytes[1] = (byte) ((value >> 8) & 0xFF);
-            valueBytes[2] = (byte) ((value >> 16) & 0xFF);
-            valueBytes[3] = (byte) ((value >> 24) & 0xFF);
-            valueBytes[4] = (byte) ((value >> 32) & 0xFF);
-            valueBytes[5] = (byte) ((value >> 40) & 0xFF);
-            valueBytes[6] = (byte) ((value >> 48) & 0xFF);
-            valueBytes[7] = (byte) ((value >> 56) & 0xFF);
+            Util.writeLong(value, valueBytes, 0);
             writeWrappedBytes(valueBytes, 8);
         }
     }
