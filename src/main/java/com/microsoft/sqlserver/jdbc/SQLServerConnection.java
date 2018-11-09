@@ -2412,7 +2412,7 @@ public class SQLServerConnection implements ISQLServerConnection {
                 }
                 else {
                     if (sessionRecovery.isConnectionRecoveryPossible()) {
-                        if (sessionRecovery.getUnprocessedResponseCount() == 0) {
+                        if (true) {
                             if (sessionRecovery.sessionStateTable.isRecoverable()) {
                                 if (isConnectionDead())// Ideally, isConnectionDead should be the first condition to be checked as rest of the checks
                                                        // are required only if the connection is dead however it is the most expensive operation out
