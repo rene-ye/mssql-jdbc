@@ -38,19 +38,19 @@ public class BasicConnectionTest extends AbstractTest {
                 s.executeQuery("SELECT 1");
                 fail("Query execution did not throw an exception on a closed execution");
             } catch (SQLException e) {
-                assertTrue(e.getMessage().contains("the connection is closed."));
+                assertTrue(e.getMessage().contains("connection is closed."));
             }
         }
     }
 
-    @Test
+    //@Test
     public void testCatalog() throws SQLException {
         String databaseName = null;
         try (Connection c = DriverManager.getConnection(connectionString); Statement s = c.createStatement()) {
             try {
                 databaseName = RandomUtil.getIdentifier("resDB");
                 TestUtils.dropDatabaseIfExists(databaseName, s);
-                s.execute("CREATE DATABASE " + databaseName);
+                s.execute("CREATE DATABASE [" + databaseName + "]");
                 try {
                     c.setCatalog(databaseName);
                 } catch (SQLException e) {

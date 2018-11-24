@@ -18,13 +18,18 @@ public class ReflectiveTests extends AbstractTest {
     
     @Test
     public void testTimeout() throws SQLException {
-        try (Connection c = DriverManager.getConnection(connectionString)) {
+        Map<String,String> m = new HashMap<>();
+        m.put("queryTimeout", "5");
+        m.put("loginTimeout", "6");
+        m.put("connectRetryCount", "2");
+        String cs = ResiliencyUtils.setConnectionProps(connectionString.concat(";"), m);
+        try (Connection c = DriverManager.getConnection(cs)) {
             try (Statement s = c.createStatement()) {
                 ResiliencyUtils.killConnection(c, connectionString);
                 ResiliencyUtils.blockConnection(c);
                 s.executeQuery("SELECT 1");
             } catch (SQLException e) {
-                assertTrue("Unexpected exception caught: " + e.getMessage(), e.getMessage().contains("timeout"));
+                assertTrue("Unexpected exception caught: " + e.getMessage(), e.getMessage().contains("The query has timed out."));
             }
         }
     }
@@ -55,7 +60,7 @@ public class ReflectiveTests extends AbstractTest {
                 fail("No exception was thrown when queryTimeout value was less than retryInterval.");
             } catch (SQLException e) {
                 //queryTimeout < retryInterval error
-                assertTrue("Unexpected exception caught: " + e.getMessage(), e.getMessage().contains("timeout"));
+                assertTrue("Unexpected exception caught: " + e.getMessage(), e.getMessage().contains("The query has timed out."));
             }
         }
     }
