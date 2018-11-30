@@ -20,6 +20,10 @@ import com.microsoft.sqlserver.testframework.AbstractTest;
 public class BasicConnectionTest extends AbstractTest {
 
     @Test
+    /*
+     * Command is executed over a broken connection (direct or routed)
+     * Expected: Connection is re-established and session is restored on the server before command execution
+     */
     public void testBasicReconnectDefault() throws SQLException {
         basicReconnect(connectionString);
     }
@@ -30,8 +34,12 @@ public class BasicConnectionTest extends AbstractTest {
     }
 
     @Test
-    public void testGracefulClose() throws SQLException {
-        try (Connection c = DriverManager.getConnection(connectionString)) {
+    /*
+     * Command with ReconnectRetryCount == 0 is executed over a broken connection
+     * Expected: Client reports communication link failure immediately
+     */
+    public void testNoReconnect() throws SQLException {
+        try (Connection c = DriverManager.getConnection(connectionString + ";connectRetryCount=0")) {
             try (Statement s = c.createStatement()) {
                 ResiliencyUtils.killConnection(c, connectionString);
                 c.close();
@@ -43,7 +51,7 @@ public class BasicConnectionTest extends AbstractTest {
         }
     }
 
-    //@Test
+    // @Test
     public void testCatalog() throws SQLException {
         String databaseName = null;
         try (Connection c = DriverManager.getConnection(connectionString); Statement s = c.createStatement()) {
@@ -60,7 +68,7 @@ public class BasicConnectionTest extends AbstractTest {
                 ResiliencyUtils.killConnection(c, connectionString);
                 try (ResultSet rs = s.executeQuery("SELECT db_name();")) {
                     while (rs.next()) {
-                        // Check if the driver reconnected to the expected database. 
+                        // Check if the driver reconnected to the expected database.
                         assertEquals(databaseName, rs.getString(1));
                     }
                 }
