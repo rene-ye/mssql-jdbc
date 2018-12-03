@@ -1967,7 +1967,7 @@ public class SQLServerConnection implements ISQLServerConnection, java.io.Serial
                     mirror = failOverPartnerPropertyValue;
 
                 long startTime = System.currentTimeMillis();
-                sessionRecovery.setLoginParameters(instanceValue, nPort, fo, loginTimeoutSeconds);
+                sessionRecovery.setLoginParameters(instanceValue, nPort, fo, (queryTimeoutSeconds < loginTimeoutSeconds) ? queryTimeoutSeconds : loginTimeoutSeconds);
                 login(activeConnectionProperties.getProperty(serverNameProperty), instanceValue, nPort, mirror, fo,
                         loginTimeoutSeconds, startTime);
             } else {
