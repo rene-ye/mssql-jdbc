@@ -9,6 +9,7 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
@@ -31,6 +32,18 @@ public class BasicConnectionTest extends AbstractTest {
     @Test
     public void testBasicEncryptedConnection() throws SQLException {
         basicReconnect(connectionString + ";encrypt=true;trustServerCertificate=true;");
+    }
+    
+    
+    @Test
+    public void testSetAttributes() throws SQLException {
+        try (Connection c = DriverManager.getConnection(connectionString)) {
+            ResiliencyUtils.toggleRandomProperties(c);
+            Map expected = ResiliencyUtils.getUserOptions(c);
+            ResiliencyUtils.killConnection(c, connectionString);
+            Map recieved = ResiliencyUtils.getUserOptions(c);
+            assertTrue("User options do not match", expected == recieved);
+        }
     }
 
     @Test
