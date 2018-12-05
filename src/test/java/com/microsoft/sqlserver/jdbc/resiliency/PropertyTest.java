@@ -1,5 +1,6 @@
 package com.microsoft.sqlserver.jdbc.resiliency;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -11,6 +12,7 @@ import java.util.concurrent.ThreadLocalRandom;
 
 import org.junit.jupiter.api.Test;
 
+import com.microsoft.sqlserver.jdbc.TestResource;
 import com.microsoft.sqlserver.testframework.AbstractTest;
 
 public class PropertyTest extends AbstractTest {
@@ -29,25 +31,29 @@ public class PropertyTest extends AbstractTest {
         }
     }
     
+    private String formatErrorMsg(String s) {
+        
+    }
+    
     @Test
     public void testRetryCount() throws SQLException {
         // fail immediately without retrying
         testInvalidPropertyOverBrokenConnection("connectRetryCount", "0", "");
         // Out of range, < 0
         testInvalidPropertyOverBrokenConnection("connectRetryCount",
-                String.valueOf(ThreadLocalRandom.current().nextInt(Integer.MIN_VALUE, 0)), "is not valid.");            
+                String.valueOf(ThreadLocalRandom.current().nextInt(Integer.MIN_VALUE, 0)), "");            
         // Out of range, > 255
         testInvalidPropertyOverBrokenConnection("connectRetryCount",
-                String.valueOf(ThreadLocalRandom.current().nextInt(256, Integer.MAX_VALUE)), "is not valid.");
+                String.valueOf(ThreadLocalRandom.current().nextInt(256, Integer.MAX_VALUE)), TestResource.getResource("R_invalidConnectRetryCount"));
         // non-Integer types: boolean, float, double, string
         testInvalidPropertyOverBrokenConnection("connectRetryCount",
-                String.valueOf(ThreadLocalRandom.current().nextBoolean()), "is not valid.");
+                String.valueOf(ThreadLocalRandom.current().nextBoolean()), TestResource.getResource("R_invalidConnectRetryCount"));
         testInvalidPropertyOverBrokenConnection("connectRetryCount",
-                String.valueOf(ThreadLocalRandom.current().nextFloat()), "is not valid.");
+                String.valueOf(ThreadLocalRandom.current().nextFloat()), TestResource.getResource("R_invalidConnectRetryCount"));
         testInvalidPropertyOverBrokenConnection("connectRetryCount",
-                String.valueOf(ThreadLocalRandom.current().nextDouble()), "is not valid.");
+                String.valueOf(ThreadLocalRandom.current().nextDouble()), TestResource.getResource("R_invalidConnectRetryCount"));
         testInvalidPropertyOverBrokenConnection("connectRetryCount",
-                ResiliencyUtils.getRandomString(ResiliencyUtils.alpha, 15), "is not valid.");
+                ResiliencyUtils.getRandomString(ResiliencyUtils.alpha, 15), TestResource.getResource("R_invalidConnectRetryCount"));
         //null
         //testInvalidPropertyOverBrokenConnection("connectRetryCount","", "is not valid.");
     }
@@ -57,19 +63,19 @@ public class PropertyTest extends AbstractTest {
     public void testRetryInterval() throws SQLException {
         // Out of range, < 1
         testInvalidPropertyOverBrokenConnection("connectRetryInterval",
-                String.valueOf(ThreadLocalRandom.current().nextInt(Integer.MIN_VALUE, 1)), "is not valid.");
+                String.valueOf(ThreadLocalRandom.current().nextInt(Integer.MIN_VALUE, 1)), TestResource.getResource("R_invalidConnectRetryInterval"));
         // Out of range, > 60
         testInvalidPropertyOverBrokenConnection("connectRetryInterval",
-                String.valueOf(ThreadLocalRandom.current().nextInt(61, Integer.MAX_VALUE)), "is not valid.");
+                String.valueOf(ThreadLocalRandom.current().nextInt(61, Integer.MAX_VALUE)), TestResource.getResource("R_invalidConnectRetryInterval"));
         // non-Integer types: boolean, float, double, string
         testInvalidPropertyOverBrokenConnection("connectRetryInterval",
-                String.valueOf(ThreadLocalRandom.current().nextBoolean()), "is not valid.");
+                String.valueOf(ThreadLocalRandom.current().nextBoolean()), TestResource.getResource("R_invalidConnectRetryInterval"));
         testInvalidPropertyOverBrokenConnection("connectRetryInterval",
-                String.valueOf(ThreadLocalRandom.current().nextFloat()), "is not valid.");
+                String.valueOf(ThreadLocalRandom.current().nextFloat()), TestResource.getResource("R_invalidConnectRetryInterval"));
         testInvalidPropertyOverBrokenConnection("connectRetryInterval",
-                String.valueOf(ThreadLocalRandom.current().nextDouble()), "is not valid.");
+                String.valueOf(ThreadLocalRandom.current().nextDouble()), TestResource.getResource("R_invalidConnectRetryInterval"));
         testInvalidPropertyOverBrokenConnection("connectRetryInterval",
-                ResiliencyUtils.getRandomString(ResiliencyUtils.alpha, 15), "is not valid.");
+                ResiliencyUtils.getRandomString(ResiliencyUtils.alpha, 15), TestResource.getResource("R_invalidConnectRetryInterval"));
         //null
         //testInvalidPropertyOverBrokenConnection("connectRetryInterval","", "is not valid.");
     }
