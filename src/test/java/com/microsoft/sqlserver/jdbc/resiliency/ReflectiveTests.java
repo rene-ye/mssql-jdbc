@@ -78,7 +78,6 @@ public class ReflectiveTests extends AbstractTest {
         
         Map<String, String> m = new HashMap<>();
         m.put("queryTimeout", "5");
-        m.put("loginTimeout", "2");        
         m.put("connectRetryCount", "1");
         String cs = ResiliencyUtils.setConnectionProps(connectionString.concat(";"), m);
         try (Connection c = DriverManager.getConnection(cs)) {
@@ -89,8 +88,8 @@ public class ReflectiveTests extends AbstractTest {
                 s.executeQuery("SELECT 1");
             } catch (SQLException e) {
                 long endTime = System.currentTimeMillis();
-                System.out.println(endTime - startTime);
-                assertTrue(endTime - startTime < 6000);
+                double elapsedTime = (endTime - startTime)/1000;
+                assertTrue("Elapsed Time out of Range: " + elapsedTime, elapsedTime < 6);
             }
         }
     }
