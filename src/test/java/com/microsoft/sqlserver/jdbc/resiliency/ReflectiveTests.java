@@ -18,20 +18,24 @@ import com.microsoft.sqlserver.testframework.AbstractTest;
 public class ReflectiveTests extends AbstractTest {
 
     @Test
-    public void testTimeout() throws SQLException {
+    public void testDefaultTimeout() throws SQLException {
+        long startTime = 0;
         Map<String, String> m = new HashMap<>();
-        m.put("queryTimeout", "5");
-        m.put("loginTimeout", "6");
         m.put("connectRetryCount", "2");
+        m.put("loginTimeout", "5");
         String cs = ResiliencyUtils.setConnectionProps(connectionString.concat(";"), m);
         try (Connection c = DriverManager.getConnection(cs)) {
             try (Statement s = c.createStatement()) {
                 ResiliencyUtils.killConnection(c, connectionString);
                 ResiliencyUtils.blockConnection(c);
+                startTime = System.currentTimeMillis();
                 s.executeQuery("SELECT 1");
+                fail("Successfully executed query on a blocked connection.");
             } catch (SQLException e) {
-                assertTrue("Unexpected exception caught: " + e.getMessage(),
-                        e.getMessage().contains("The query has timed out."));
+                System.out.println(e.getMessage());
+                double elapsedTime = (System.currentTimeMillis() - startTime)/1000;
+                //Default attempt interval is 10 seconds, and login timeout is 5
+                assertTrue("Elapsed Time out of Range: " + elapsedTime, elapsedTime > 20 && elapsedTime < 21);
             }
         }
     }
@@ -73,9 +77,8 @@ public class ReflectiveTests extends AbstractTest {
      * Command with infinite ConnectionTimeout and ReconnectRetryCount == 1 is executed over a broken connection
      * Expected: Client times out by QueryTimeout
      */
-    public void testInfiniteLoginTimeout() throws SQLException {
+    public void testQueryTimeout() throws SQLException {
         long startTime = 0;
-        
         Map<String, String> m = new HashMap<>();
         m.put("queryTimeout", "5");
         m.put("connectRetryCount", "1");
@@ -86,9 +89,10 @@ public class ReflectiveTests extends AbstractTest {
                 ResiliencyUtils.blockConnection(c);
                 startTime = System.currentTimeMillis();
                 s.executeQuery("SELECT 1");
+                fail("Successfully executed query on a blocked connection.");
             } catch (SQLException e) {
-                long endTime = System.currentTimeMillis();
-                double elapsedTime = (endTime - startTime)/1000;
+                double elapsedTime = (System.currentTimeMillis() - startTime)/1000;
+                //Timeout should occur after query timeout and not login timeout
                 assertTrue("Elapsed Time out of Range: " + elapsedTime, elapsedTime < 6);
             }
         }

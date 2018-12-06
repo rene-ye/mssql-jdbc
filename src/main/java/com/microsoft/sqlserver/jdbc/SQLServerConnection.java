@@ -2346,7 +2346,7 @@ public class SQLServerConnection implements ISQLServerConnection, java.io.Serial
                 // unsupported configuration (e.g. Sphinx, invalid packet size, etc.)
                 || (SQLServerException.DRIVER_ERROR_UNSUPPORTED_CONFIG == e.getDriverErrorCode())
                 // no more time to try again
-                || (SQLServerException.ERROR_SOCKET_TIMEOUT == e.getDriverErrorCode()) || timerHasExpired(timerExpire)
+                || (SQLServerException.ERROR_SOCKET_TIMEOUT == e.getDriverErrorCode())
                 // for non-dbmirroring cases, do not retry after tcp socket connection succeeds
                 || (state.equals(State.Connected) && !isDBMirroring))
             return true;

@@ -193,7 +193,7 @@ public final class ResiliencyUtils {
                 Properties connectionProps;
                 try {
                     connectionProps = (Properties) f.get(c);
-                    connectionProps.setProperty("serverName", "BOGUS-SERVER-NAME");
+                    connectionProps.setProperty("serverName", "bogusServer");
                     f.set(c, connectionProps);
                     return;
                 } catch (IllegalArgumentException | IllegalAccessException e) {

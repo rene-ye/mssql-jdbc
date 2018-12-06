@@ -23,7 +23,7 @@ import com.microsoft.sqlserver.testframework.AbstractTest;
 public class SessionStateTests extends AbstractTest {
 
     @Test
-    public void testParseInitial() throws SQLException, IllegalArgumentException, IllegalAccessException, NoSuchMethodException, SecurityException, InvocationTargetException {
+    public void testRequestRecovery() throws SQLException, IllegalArgumentException, IllegalAccessException, NoSuchMethodException, SecurityException, InvocationTargetException {
         Map<String, String> m = new HashMap<>();
         m.put("connectRetryCount", "1");
         String cs = ResiliencyUtils.setConnectionProps(connectionString.concat(";"), m);
@@ -38,6 +38,27 @@ public class SessionStateTests extends AbstractTest {
                     method.setAccessible(true);
                     boolean b = (boolean) method.invoke(sessionRecoveryFeature);
                     assertTrue("Session Recovery not negotiated when requested", b);
+                }
+            }
+        }
+    }
+    
+    @Test
+    public void testNoRecovery() throws SQLException, IllegalArgumentException, IllegalAccessException, NoSuchMethodException, SecurityException, InvocationTargetException {
+        Map<String, String> m = new HashMap<>();
+        m.put("connectRetryCount", "0");
+        String cs = ResiliencyUtils.setConnectionProps(connectionString.concat(";"), m);
+
+        try (Connection c = DriverManager.getConnection(cs)) {
+            Field fields[] = c.getClass().getSuperclass().getDeclaredFields();
+            for (Field f : fields) {
+                if (f.getName() == "sessionRecovery") {
+                    f.setAccessible(true);
+                    Object sessionRecoveryFeature = f.get(c);
+                    Method method = sessionRecoveryFeature.getClass().getDeclaredMethod("isConnectionRecoveryNegotiated");
+                    method.setAccessible(true);
+                    boolean b = (boolean) method.invoke(sessionRecoveryFeature);
+                    assertTrue("Session Recovery recieved when not negotiated", !b);
                 }
             }
         }
