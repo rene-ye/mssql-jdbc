@@ -39,18 +39,18 @@ public class BasicConnectionTest extends AbstractTest {
     public void testSetAttributes() throws SQLException {
         try (Connection c = DriverManager.getConnection(connectionString)) {
             ResiliencyUtils.toggleRandomProperties(c);
-            Map expected = ResiliencyUtils.getUserOptions(c);
+            Map<String,String> expected = ResiliencyUtils.getUserOptions(c);
             ResiliencyUtils.killConnection(c, connectionString);
-            Map recieved = ResiliencyUtils.getUserOptions(c);
+            Map<String,String> recieved = ResiliencyUtils.getUserOptions(c);
             assertTrue("User options do not match", expected == recieved);
         }
     }
 
-    @Test
     /*
      * Command with ReconnectRetryCount == 0 is executed over a broken connection
      * Expected: Client reports communication link failure immediately
      */
+    @Test
     public void testNoReconnect() throws SQLException {
         try (Connection c = DriverManager.getConnection(connectionString + ";connectRetryCount=0")) {
             try (Statement s = c.createStatement()) {
@@ -59,7 +59,7 @@ public class BasicConnectionTest extends AbstractTest {
                 s.executeQuery("SELECT 1");
                 fail("Query execution did not throw an exception on a closed execution");
             } catch (SQLException e) {
-                assertTrue(e.getMessage().contains("connection is closed."));
+                assertEquals("08S01", e.getSQLState());
             }
         }
     }

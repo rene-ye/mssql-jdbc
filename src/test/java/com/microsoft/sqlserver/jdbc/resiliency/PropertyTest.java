@@ -7,11 +7,13 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ResourceBundle;
 import java.util.concurrent.ThreadLocalRandom;
 
 import org.junit.jupiter.api.Test;
 
 import com.microsoft.sqlserver.jdbc.TestResource;
+import com.microsoft.sqlserver.jdbc.TestUtils;
 import com.microsoft.sqlserver.testframework.AbstractTest;
 
 
@@ -33,7 +35,7 @@ public class PropertyTest extends AbstractTest {
     }
 
     private String formatErrorMsg(String s) {
-        return ("\\Q" + TestResource.getResource(s) + "\\E").replace("{0}", "\\E.*\\Q");
+        return ("\\Q" + TestUtils.rb.getString(s) + "\\E").replace("{0}", "\\E.*\\Q");
     }
 
     @Test
@@ -59,8 +61,6 @@ public class PropertyTest extends AbstractTest {
         testInvalidPropertyOverBrokenConnection("connectRetryCount",
                 ResiliencyUtils.getRandomString(ResiliencyUtils.alpha, 15),
                 formatErrorMsg("R_invalidConnectRetryCount"));
-        // null
-        // testInvalidPropertyOverBrokenConnection("connectRetryCount","", "is not valid.");
     }
 
     @Test
@@ -86,7 +86,5 @@ public class PropertyTest extends AbstractTest {
         testInvalidPropertyOverBrokenConnection("connectRetryInterval",
                 ResiliencyUtils.getRandomString(ResiliencyUtils.alpha, 15),
                 formatErrorMsg("R_invalidConnectRetryInterval"));
-        // null
-        // testInvalidPropertyOverBrokenConnection("connectRetryInterval","", "is not valid.");
     }
 }
