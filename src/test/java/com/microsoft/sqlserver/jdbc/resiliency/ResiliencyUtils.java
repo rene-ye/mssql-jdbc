@@ -192,6 +192,10 @@ public final class ResiliencyUtils {
     // uses reflection to "corrupt" a Connection's server target
     public static void blockConnection(Connection c) throws SQLException {
         Field fields[] = c.getClass().getSuperclass().getDeclaredFields();
+        //Fix for java 8
+        if (fields.length == 0) {
+            fields = c.getClass().getDeclaredFields();
+        }
         for (Field f : fields) {
             if (f.getName() == "activeConnectionProperties" && Properties.class == f.getType()) {
                 f.setAccessible(true);
