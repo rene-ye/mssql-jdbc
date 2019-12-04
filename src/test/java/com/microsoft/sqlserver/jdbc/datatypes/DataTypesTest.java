@@ -1576,20 +1576,20 @@ public class DataTypesTest extends AbstractTest {
                     // Update datetimeoffset(2) from pre-Gregorian Date
                     rs.updateDate(1, Date.valueOf("0814-02-18"));
                     rs.updateRow();
-                    assertEquals("0814-02-18 00:00:00 +00:00",
+                    assertEquals("0814-02-18 00:00:00.000 +00:00",
                             ((SQLServerResultSet) rs).getDateTimeOffset(1).toString());
 
                     // Update datetimeoffset(2) from "last" Time
                     rs.updateTime(1, new java.sql.Time(Timestamp.valueOf("1970-01-01 23:59:59.998").getTime()));
                     rs.updateRow();
-                    assertEquals("1970-01-02 00:00:00 +00:00",
+                    assertEquals("1970-01-02 00:00:00.000 +00:00",
                             ((SQLServerResultSet) rs).getDateTimeOffset(1).toString());
 
                     // Update datetimeoffset(2) from the "last" Timestamp
                     rs.updateTimestamp(1, Timestamp.valueOf("9999-12-31 23:59:59.998"));
                     rs.updateRow();
                     dto = ((SQLServerResultSet) rs).getDateTimeOffset(1);
-                    assertEquals("9999-12-31 23:59:59.99 +00:00", dto.toString());
+                    assertEquals("9999-12-31 23:59:59.990 +00:00", dto.toString());
 
                     // Attempt to update datetimeoffset(2) from the first out of range value
                     // Verify that an exception is thrown and that the statement/connection is still usable after

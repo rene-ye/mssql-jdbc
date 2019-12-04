@@ -36,6 +36,7 @@ import java.security.Provider;
 import java.security.Security;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
+import java.sql.Date;
 import java.sql.Timestamp;
 import java.text.MessageFormat;
 import java.time.OffsetDateTime;
@@ -69,6 +70,8 @@ import javax.net.ssl.TrustManagerFactory;
 import javax.net.ssl.X509TrustManager;
 
 import com.microsoft.sqlserver.jdbc.dataclassification.SensitivityClassification;
+
+import microsoft.sql.DateTimeOffset;
 
 
 final class TDS {
@@ -6823,11 +6826,7 @@ final class TDSReader implements Serializable {
         int localDaysIntoCE = readDaysIntoCE();
 
         // Convert the DATE value to the desired Java type.
-        return DDC.convertTemporalToObject(jdbcType, SSType.DATE, appTimeZoneCalendar, localDaysIntoCE, 0, // midnight
-                                                                                                           // local to
-                                                                                                           // app time
-                                                                                                           // zone
-                0); // scale (ignored for DATE)
+        return DDC.convertTemporalToObject(jdbcType, SSType.DATE, appTimeZoneCalendar, localDaysIntoCE, 0, 0);
     }
 
     final Object readTime(int valueLength, TypeInfo typeInfo, Calendar appTimeZoneCalendar,
@@ -6867,10 +6866,23 @@ final class TDSReader implements Serializable {
         int utcDaysIntoCE = readDaysIntoCE();
         int localMinutesOffset = readShort();
 
-        // Convert the DATETIMEOFFSET value to the desired Java type.
-        return DDC.convertTemporalToObject(jdbcType, SSType.DATETIMEOFFSET,
-                new GregorianCalendar(new SimpleTimeZone(localMinutesOffset * 60 * 1000, ""), Locale.US), utcDaysIntoCE,
-                utcNanosSinceMidnight, typeInfo.getScale());
+        DateTimeOffset dto = DateTimeOffset.valueOf(utcNanosSinceMidnight, utcDaysIntoCE, localMinutesOffset);
+        switch (jdbcType.category) {
+            case DATE:
+                java.time.Instant i = dto.getOffsetDateTime().toInstant();
+                java.sql.Date d = new java.sql.Date(dto.getOffsetDateTime().toEpochSecond() * 1000);
+                return d;
+            case TIME:
+                return java.sql.Time.from(dto.getOffsetDateTime().toInstant());
+            case TIMESTAMP:
+                return java.sql.Timestamp.from(dto.getOffsetDateTime().toInstant());
+            case DATETIMEOFFSET:
+                return dto;
+            case CHARACTER:
+                return dto.toString();
+            default:
+                throw new AssertionError("Unexpected JDBCType: " + jdbcType);
+        }
     }
 
     private int readDaysIntoCE() throws SQLServerException {
