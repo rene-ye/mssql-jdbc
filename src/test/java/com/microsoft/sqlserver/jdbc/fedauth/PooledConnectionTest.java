@@ -190,6 +190,7 @@ public class PooledConnectionTest extends FedauthCommon {
             for (Future<Void> f : results) {
                 f.get();
             }
+            es.shutdown();
         } catch (Exception e) {
             fail(e.getMessage());
         }
@@ -234,6 +235,7 @@ public class PooledConnectionTest extends FedauthCommon {
             for (Future<Void> f : results) {
                 f.get();
             }
+            es.shutdown();
         } catch (Exception e) {
             fail(e.getMessage());
         }
