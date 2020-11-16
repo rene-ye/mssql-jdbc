@@ -1,0 +1,38 @@
+#################
+## Eclipse
+#################
+
+.project
+.metadata
+bin/
+tmp/
+target/
+build/
+AE_Certificates/
+*.tmp
+*.bak
+*.swp
+*~.nib
+*.cer
+*.jks
+local.properties
+config.properties
+.classpath
+.vscode/
+.settings/
+.gradle/
+.loadpath
+outdated-dependencies.txt
+pom.xml.versionBackup
+
+# External tool builders
+.externalToolBuilders/
+
+# Locally stored "Eclipse launch configurations"
+*.launch
+
+# CDT-specific
+.cproject
+
+# PDT-specific
+.buildpath
